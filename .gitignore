@@ -1,0 +1,29 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# JavaScript
+**/node_modules/
+client/dist/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime uploads and generated data
+storage/audio/
+storage/resumes/
+server/storage/resumes/
+vector_db/
+
+# Local files
+*.log
+*.db
+.DS_Store
+Thumbs.db

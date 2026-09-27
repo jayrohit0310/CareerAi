@@ -1,0 +1,13 @@
+﻿fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+pydantic-settings
+python-dotenv
+PyMuPDF
+email-validator
+google-generativeai
