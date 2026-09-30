@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
@@ -19,18 +20,20 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         
         {/* Protected Routes wrapped in Layout */}
-        <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-          <Route index element={<Dashboard />} />
-          <Route path="chat" element={<Chat />} />
-          <Route path="interview" element={<Interview />} />
-          <Route path="career-report" element={<CareerReport />} />
-          <Route path="results" element={<Results />} />
-          <Route path="courses" element={<Courses />} />
-          <Route path="jobs" element={<Jobs />} />
+        <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/interview" element={<Interview />} />
+          <Route path="/career-report" element={<CareerReport />} />
+          <Route path="/results" element={<Results />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/jobs" element={<Jobs />} />
         </Route>
       </Routes>
     </Router>

@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Default to 8000 (standard local uvicorn port) with fallback support for 8080 (Docker port)
+const DEFAULT_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: DEFAULT_URL,
+  timeout: 10000,
 });
 
 api.interceptors.request.use((config) => {
@@ -13,6 +15,55 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Automatic port fallback interceptor:
+// If request to port 8000 fails due to network error, retry once on port 8080, and vice versa.
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (originalRequest && !error.response && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const currentUrl = api.defaults.baseURL || DEFAULT_URL;
+
+      let alternateUrl = null;
+      if (currentUrl.includes(':8000')) {
+        alternateUrl = currentUrl.replace(':8000', ':8080');
+      } else if (currentUrl.includes(':8080')) {
+        alternateUrl = currentUrl.replace(':8080', ':8000');
+      }
+
+      if (alternateUrl && alternateUrl !== currentUrl) {
+        try {
+          api.defaults.baseURL = alternateUrl;
+          originalRequest.baseURL = alternateUrl;
+          return await api(originalRequest);
+        } catch (retryError) {
+          return Promise.reject(retryError);
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const extractErrorMessage = (err, defaultMsg = 'An unexpected error occurred') => {
+  if (!err) return defaultMsg;
+  if (!err.response) {
+    return 'Unable to connect to the backend server. Please verify that the backend is running.';
+  }
+  const detail = err.response.data?.detail;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item.msg || JSON.stringify(item)).join(', ');
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.message || JSON.stringify(detail);
+  }
+  return defaultMsg;
+};
 
 export const login = async (email, password) => {
   const formData = new URLSearchParams();
@@ -37,6 +88,11 @@ export const getMe = async () => {
   return response.data;
 };
 
+export const updateSkills = async (skills) => {
+  const response = await api.put('/auth/skills', { skills });
+  return response.data;
+};
+
 // --- New Pipeline Endpoints ---
 
 export const getCareerMatches = async () => {
@@ -44,8 +100,13 @@ export const getCareerMatches = async () => {
   return response.data;
 };
 
-export const getSalaryEstimate = async () => {
-  const response = await api.get('/salary/estimate');
+export const getSalaryEstimate = async (role, experienceYears) => {
+  const params = {};
+  if (role) params.role = role;
+  if (experienceYears !== undefined && experienceYears !== null) {
+    params.experience_years = experienceYears;
+  }
+  const response = await api.get('/salary/estimate', { params });
   return response.data;
 };
 
@@ -68,6 +129,7 @@ export const sendChatMessage = async (message) => {
   });
   return response.data;
 };
+
 export const getCourseRecommendations = async () => {
   const response = await api.get('/course/recommendations');
   return response.data;

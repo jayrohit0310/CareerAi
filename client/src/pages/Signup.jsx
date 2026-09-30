@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signup } from '../services/api';
+import { signup, extractErrorMessage } from '../services/api';
 import { Briefcase } from 'lucide-react';
 
 export default function Signup() {
@@ -13,12 +13,13 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     try {
       await signup(email, password);
       // Auto-redirect to login after successful signup
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error signing up');
+      setError(extractErrorMessage(err, 'Failed to sign up. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -28,9 +29,9 @@ export default function Signup() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <div className="mx-auto h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+          <Link to="/" className="mx-auto h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors">
             <Briefcase className="w-8 h-8 text-white" />
-          </div>
+          </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
             Create an account
           </h2>

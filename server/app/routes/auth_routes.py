@@ -2,6 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 
 from app.models.base import get_db
@@ -23,9 +24,14 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+    extracted_skills: Optional[str] = None
+    predicted_role: Optional[str] = None
     
     class Config:
         from_attributes = True
+
+class SkillsUpdate(BaseModel):
+    skills: List[str]
 
 class Token(BaseModel):
     access_token: str
@@ -63,3 +69,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 @router.get("/me", response_model=UserResponse)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@router.put("/skills")
+def update_skills(data: SkillsUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    clean_skills = [s.strip() for s in data.skills if s.strip()]
+    current_user.extracted_skills = ",".join(clean_skills)
+    db.commit()
+    db.refresh(current_user)
+    return {"message": "Skills updated successfully", "skills": clean_skills}
+

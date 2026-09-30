@@ -27,22 +27,47 @@ class AnswerResponse(BaseModel):
     feedback: str
     next_question: str
 
+import uuid
+from typing import Dict, Any
+
+QUESTIONS_POOL = [
+    "Tell me about a challenging technical project you worked on. What was the problem, how did you architect the solution, and what was the outcome?",
+    "Describe a time when you disagreed with a colleague or product manager about technical implementation. How did you resolve the conflict?",
+    "How do you design and maintain high-performance scalable systems when dealing with unexpected traffic spikes?",
+    "What strategies do you use to quickly learn and adopt unfamiliar technologies or frameworks in a fast-paced environment?",
+    "Can you share an experience where you had to debug a critical production outage under high pressure?"
+]
+
+interview_sessions: Dict[str, Dict[str, Any]] = {}
+
 @router.post("/start", response_model=InterviewStartResponse)
 def start_interview(current_user: User = Depends(get_current_user)):
+    session_id = f"sess_{uuid.uuid4().hex[:8]}"
+    interview_sessions[session_id] = {
+        "index": 0,
+        "user_id": current_user.id
+    }
     return {
-        "session_id": "mock_session_123",
-        "first_question": "Tell me about a time you faced a difficult challenge at work."
+        "session_id": session_id,
+        "first_question": QUESTIONS_POOL[0]
     }
 
 @router.post("/submit-answer", response_model=AnswerResponse)
 def submit_answer(request: AnswerRequest, current_user: User = Depends(get_current_user)):
-    # Currently assuming a static question for the mock
-    question = "Tell me about a time you faced a difficult challenge at work."
+    session = interview_sessions.get(request.session_id, {"index": 0})
+    current_idx = session.get("index", 0)
+    current_q = QUESTIONS_POOL[current_idx % len(QUESTIONS_POOL)]
     
-    evaluation = score_interview_answer(question, request.answer_text)
+    evaluation = score_interview_answer(current_q, request.answer_text)
+    
+    next_idx = current_idx + 1
+    session["index"] = next_idx
+    interview_sessions[request.session_id] = session
+    
+    next_q = QUESTIONS_POOL[next_idx % len(QUESTIONS_POOL)]
     
     return {
-        "score": evaluation["score"],
-        "feedback": evaluation["feedback"],
-        "next_question": "What is your greatest weakness?"
+        "score": int(evaluation.get("score", 75)),
+        "feedback": evaluation.get("feedback", "Good answer. Consider structuring further with quantifiable results."),
+        "next_question": next_q
     }

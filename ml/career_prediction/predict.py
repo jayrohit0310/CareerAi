@@ -27,7 +27,19 @@ def predict_career_matches(skills: list) -> list:
             
         careers = json.loads(text_resp)
         if isinstance(careers, list):
-            return sorted(careers, key=lambda x: x.get('match_percentage', 0), reverse=True)
+            cleaned = []
+            for c in careers:
+                raw_pct = c.get('match_percentage', 80)
+                try:
+                    pct = int(float(str(raw_pct).replace('%', '').strip()))
+                except Exception:
+                    pct = 80
+                cleaned.append({
+                    "title": str(c.get("title", "Software Engineer")),
+                    "match_percentage": pct,
+                    "description": str(c.get("description", "Analyzes technical requirements and develops software systems."))
+                })
+            return sorted(cleaned, key=lambda x: x['match_percentage'], reverse=True)
         return fallback_predict_career_matches(skills)
     except Exception as e:
         print(f"Error predicting career matches: {e}")
