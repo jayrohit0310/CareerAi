@@ -1,33 +1,26 @@
 import os
 import json
-import google.generativeai as genai
-
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+from ml.common.gemini_client import call_gemini_api, clean_json_response, get_gemini_api_key
 
 def predict_courses(skills: list) -> list:
     """
-    Recommends courses based on skills using Gemini.
+    Recommends high-yield online courses based on candidate skills using Gemini.
     """
-    if not os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY") == "your_gemini_api_key_here" or not skills:
+    if not get_gemini_api_key() or not skills:
         return fallback_predict_courses(skills)
         
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
-        Given the following candidate skills: {', '.join(skills)}
-        Recommend 3 realistic online courses (from Coursera, Udemy, edX, etc.) that would help them level up or learn related in-demand skills.
-        Return ONLY a JSON list of objects with the following keys: "title", "platform", "url", "reason".
+        Given candidate skills: {', '.join(skills)}
+        Recommend 3 realistic high-impact online courses (from Coursera, Udemy, edX, etc.) to level up or close skill gaps.
+        Return ONLY a JSON list of objects with the exact keys: "title", "platform", "url", "reason".
         """
-        response = model.generate_content(prompt)
-        text_resp = response.text.strip()
-        if text_resp.startswith("```json"):
-            text_resp = text_resp[7:-3]
-        elif text_resp.startswith("```"):
-            text_resp = text_resp[3:-3]
-            
-        courses = json.loads(text_resp)
-        if isinstance(courses, list):
-            return courses
+        raw_resp = call_gemini_api(prompt, temperature=0.2)
+        if raw_resp:
+            json_text = clean_json_response(raw_resp)
+            courses = json.loads(json_text)
+            if isinstance(courses, list) and len(courses) > 0:
+                return courses
         return fallback_predict_courses(skills)
     except Exception as e:
         print(f"Error predicting courses: {e}")
@@ -36,22 +29,22 @@ def predict_courses(skills: list) -> list:
 def fallback_predict_courses(skills: list) -> list:
     courses = [
         {
-            "title": "Advanced Python for Data Science",
+            "title": "Advanced Python for Data Science and Backend",
             "platform": "Coursera",
             "url": "https://coursera.org",
-            "reason": "Great for building a strong foundation in data manipulation."
+            "reason": "Great for building an enterprise-grade foundation in data and APIs."
         },
         {
-            "title": "System Design Interview Prep",
+            "title": "System Design & Distributed Systems",
             "platform": "Udemy",
             "url": "https://udemy.com",
-            "reason": "Crucial for transitioning to Senior engineering roles."
+            "reason": "Crucial for transitioning to Senior and Lead engineering positions."
         },
         {
-            "title": "React - The Complete Guide",
-            "platform": "Udemy",
-            "url": "https://udemy.com",
-            "reason": "Master frontend development and build modern UI components."
+            "title": "Full-Stack React & Next.js Architecture",
+            "platform": "Coursera",
+            "url": "https://coursera.org",
+            "reason": "Master modern frontends, SSR, and production performance optimization."
         }
     ]
     return courses

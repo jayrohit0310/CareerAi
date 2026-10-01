@@ -1,31 +1,27 @@
 import os
 import json
-import google.generativeai as genai
-
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+from ml.common.gemini_client import call_gemini_api, clean_json_response, get_gemini_api_key
 
 def predict_career_matches(skills: list) -> list:
     """
     Predicts career matches based on skills using Gemini to generate dynamic roles.
     """
-    if not os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY") == "your_gemini_api_key_here" or not skills:
+    if not get_gemini_api_key() or not skills:
         return fallback_predict_career_matches(skills)
         
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
         Given the following candidate skills: {', '.join(skills)}
         Recommend 3 potential career roles that strongly match these skills.
         Return ONLY a JSON list of objects with the following keys: "title", "match_percentage" (integer 0-100), "description".
+        No other text.
         """
-        response = model.generate_content(prompt)
-        text_resp = response.text.strip()
-        if text_resp.startswith("```json"):
-            text_resp = text_resp[7:-3]
-        elif text_resp.startswith("```"):
-            text_resp = text_resp[3:-3]
-            
-        careers = json.loads(text_resp)
+        raw_resp = call_gemini_api(prompt, temperature=0.2)
+        if not raw_resp:
+            return fallback_predict_career_matches(skills)
+
+        json_text = clean_json_response(raw_resp)
+        careers = json.loads(json_text)
         if isinstance(careers, list):
             cleaned = []
             for c in careers:
@@ -50,11 +46,9 @@ def fallback_predict_career_matches(skills: list) -> list:
     has_react = any('react' in s.lower() for s in skills)
     
     matches = []
-    
     if has_python:
         matches.append({"title": "Data Scientist", "match_percentage": 92, "description": "Analyzes complex data to extract insights using Python."})
         matches.append({"title": "Backend Engineer", "match_percentage": 88, "description": "Develops server-side logic and APIs."})
-    
     if has_react:
         matches.append({"title": "Frontend Developer", "match_percentage": 95, "description": "Builds user interfaces using React."})
         matches.append({"title": "Full Stack Developer", "match_percentage": 82, "description": "Handles both frontend and backend development."})

@@ -1,11 +1,8 @@
 import re
 import os
 import json
-import google.generativeai as genai
+from ml.common.gemini_client import call_gemini_api, clean_json_response, get_gemini_api_key
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
-
-# A basic dictionary of common tech and soft skills for v1
 COMMON_SKILLS = [
     # Programming Languages
     "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Ruby", "PHP", "Swift", "Kotlin", "Go", "Rust", "HTML", "CSS", "SQL",
@@ -24,49 +21,39 @@ COMMON_SKILLS = [
     "Microservices", "CI/CD", "Test Driven Development", "Object Oriented Programming"
 ]
 
-def extract_skills(text: str) -> list[str]:
+def extract_skills(text: str) -> list:
     """
-    Extracts skills from a given text using Gemini LLM for better semantic understanding.
-    Falls back to regex matching if API is not available.
+    Extracts professional skills from resume text using Gemini, with regex fallback.
     """
     if not text:
         return []
 
-    if not os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY") == "your_gemini_api_key_here":
-        return fallback_extract_skills(text)
+    if get_gemini_api_key():
+        try:
+            prompt = f"""
+            Extract a list of professional skills (programming languages, frameworks, cloud tools, databases, and methodologies) from the following resume text.
+            Return ONLY a valid JSON array of strings, for example: ["Python", "React", "PostgreSQL", "Docker"]
+            No other text.
 
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"""
-        Extract professional skills (e.g. programming languages, frameworks, tools, soft skills) from the following text.
-        Return ONLY a JSON list of strings, for example: ["Python", "Machine Learning", "Communication"]
-        
-        Text:
-        {text}
-        """
-        response = model.generate_content(prompt)
-        text_resp = response.text.strip()
-        if text_resp.startswith("```json"):
-            text_resp = text_resp[7:-3]
-        elif text_resp.startswith("```"):
-            text_resp = text_resp[3:-3]
-            
-        result = json.loads(text_resp)
-        if isinstance(result, list):
-            return result
-        return fallback_extract_skills(text)
-    except Exception as e:
-        print(f"Error extracting skills: {e}")
-        return fallback_extract_skills(text)
+            Resume text:
+            {text[:4000]}
+            """
+            raw_resp = call_gemini_api(prompt, temperature=0.1)
+            if raw_resp:
+                json_text = clean_json_response(raw_resp)
+                result = json.loads(json_text)
+                if isinstance(result, list) and len(result) > 0:
+                    return [str(s).strip() for s in result if s]
+        except Exception as e:
+            print(f"Gemini skill extraction error: {e}")
 
-def fallback_extract_skills(text: str) -> list[str]:
+    return fallback_extract_skills(text)
+
+def fallback_extract_skills(text: str) -> list:
     extracted = set()
-    # Normalize text to lower case for case-insensitive matching
     text_lower = text.lower()
     
     for skill in COMMON_SKILLS:
-        # Use regex to match the skill as a whole word (avoid matching "java" in "javascript")
-        # Escape the skill string to handle cases like "Node.js" or "C++"
         pattern = r'\b' + re.escape(skill.lower()) + r'\b'
         if re.search(pattern, text_lower):
             extracted.add(skill)
