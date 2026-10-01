@@ -6,7 +6,9 @@ from app.middleware.auth import get_current_user
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 try:
     from ml.job_recommender.recommend_jobs import predict_jobs
 except ImportError:

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { startInterview, submitInterviewAnswer } from '../services/api';
+import { useState, useEffect, useRef } from 'react';
+import { startInterview, submitInterviewAnswer, transcribeAudio } from '../services/api';
+import { AudioRecorder } from '../services/audioRecorder';
 import { 
   UserRoundCheck, 
   Send, 
@@ -12,9 +13,12 @@ import {
   MicOff, 
   CheckCircle2, 
   ChevronDown, 
-  ChevronUp,
-  Sparkles,
-  ArrowRight
+  ChevronUp, 
+  Sparkles, 
+  Loader2, 
+  Square, 
+  AlertCircle,
+  Volume2
 } from 'lucide-react';
 
 export default function Interview() {
@@ -34,16 +38,39 @@ export default function Interview() {
   const [questionCount, setQuestionCount] = useState(1);
   const [totalQuestions] = useState(5);
   const [timerSeconds, setTimerSeconds] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
   const [showTips, setShowTips] = useState(false);
   const [interviewHistory, setInterviewHistory] = useState([]);
 
-  // Timer counter
+  // Voice recording & transcription state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingError, setRecordingError] = useState(null);
+
+  const audioRecorderRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
+  const recordingTimerRef = useRef(null);
+  const recordedTextRef = useRef('');
+
+  // Overall session timer
   useEffect(() => {
     const timer = setInterval(() => {
       setTimerSeconds(prev => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Cleanup audio tracks and recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (speechRecognitionRef.current) {
+        try { speechRecognitionRef.current.stop(); } catch {}
+      }
+      if (audioRecorderRef.current) {
+        audioRecorderRef.current.cleanup();
+      }
+    };
   }, []);
 
   const initInterview = async () => {
@@ -74,9 +101,117 @@ export default function Interview() {
     return `${mins.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
   };
 
+  const startVoiceRecording = async () => {
+    setRecordingError(null);
+    recordedTextRef.current = '';
+
+    // Initialize Web Speech API if supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        const baseText = answer.trim() ? answer.trim() + ' ' : '';
+
+        recognition.onresult = (event) => {
+          let liveTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            liveTranscript += event.results[i][0].transcript + ' ';
+          }
+          recordedTextRef.current = liveTranscript.trim();
+          setAnswer(baseText + liveTranscript.trim());
+        };
+
+        recognition.onerror = (e) => {
+          console.warn('Web Speech recognition notice:', e.error);
+        };
+
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      } catch (err) {
+        console.warn('Web Speech failed to initialize:', err);
+      }
+    }
+
+    // Initialize MediaRecorder for backend audio transcription fallback
+    try {
+      if (!audioRecorderRef.current) {
+        audioRecorderRef.current = new AudioRecorder();
+      }
+      await audioRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Audio recorder failed to start:', err);
+      if (speechRecognitionRef.current) {
+        try { speechRecognitionRef.current.stop(); } catch {}
+      }
+      setRecordingError('Microphone access was denied or no microphone was found. Please check browser permissions.');
+      setIsRecording(false);
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch {}
+      speechRecognitionRef.current = null;
+    }
+
+    if (audioRecorderRef.current) {
+      try {
+        const audioBlob = await audioRecorderRef.current.stop();
+
+        // If Web Speech did not capture text (or was not supported), transcribe via backend
+        if (!recordedTextRef.current && audioBlob && audioBlob.size > 0) {
+          setIsTranscribing(true);
+          try {
+            const data = await transcribeAudio(audioBlob);
+            if (data && data.transcript) {
+              setAnswer(prev => prev ? `${prev.trim()} ${data.transcript}` : data.transcript);
+            }
+          } catch (transcribeErr) {
+            console.warn('Backend audio transcription failed or offline:', transcribeErr);
+            setRecordingError('Could not process speech. You can still type your answer manually.');
+          } finally {
+            setIsTranscribing(false);
+          }
+        }
+      } catch (err) {
+        console.error('Error stopping audio recorder:', err);
+      }
+    }
+  };
+
+  const handleToggleVoice = () => {
+    if (isRecording) {
+      stopVoiceRecording();
+    } else {
+      startVoiceRecording();
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!answer.trim()) return;
+
+    if (isRecording) {
+      await stopVoiceRecording();
+    }
     
     setIsLoading(true);
     try {
@@ -89,7 +224,6 @@ export default function Interview() {
         }
       }
 
-      // If backend responded with feedback
       if (data && data.score) {
         setFeedback({
           score: data.score,
@@ -101,7 +235,6 @@ export default function Interview() {
         setInterviewHistory(prev => [...prev, { q: currentQuestion, a: answer, score: data.score }]);
         setCurrentQuestion(nextQ);
       } else {
-        // Smart realistic feedback evaluation simulator
         const wordCount = answer.trim().split(/\s+/).length;
         const calculatedScore = Math.min(95, Math.max(65, Math.round(50 + wordCount * 0.35)));
         setFeedback({
@@ -124,19 +257,6 @@ export default function Interview() {
     }
   };
 
-  const toggleMockSpeech = () => {
-    if (!isRecording) {
-      setIsRecording(true);
-      // Simulate speech input
-      setTimeout(() => {
-        setAnswer(prev => prev ? `${prev} In my previous role, I took the lead in automating our CI/CD pipeline which reduced deployment failures by 35%.` : 'In my previous role, I took the lead in automating our CI/CD pipeline which reduced deployment failures by 35%.');
-        setIsRecording(false);
-      }, 2500);
-    } else {
-      setIsRecording(false);
-    }
-  };
-
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header Bar */}
@@ -148,7 +268,7 @@ export default function Interview() {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900">AI Mock Interview Simulator</h1>
             <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
-              Practice role-specific questions with real-time AI scoring and guidance.
+              Practice role-specific questions with real-time speech-to-text, scoring, and STAR feedback.
             </p>
           </div>
         </div>
@@ -256,46 +376,119 @@ export default function Interview() {
           </div>
         </div>
 
+        {/* Recording / Transcribing Banners */}
+        {isRecording && (
+          <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between gap-3 animate-pulse">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
+              </span>
+              <div className="text-xs font-bold text-rose-900 flex items-center gap-2">
+                <span>Listening to your microphone...</span>
+                <span className="font-mono text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+                  {formatTimer(recordingSeconds)}
+                </span>
+              </div>
+              {/* Animated audio equalizer bars */}
+              <div className="flex items-end gap-1 h-4 ml-2">
+                <span className="w-1 bg-rose-500 rounded-full animate-bounce h-3"></span>
+                <span className="w-1 bg-rose-500 rounded-full animate-bounce h-4 [animation-delay:150ms]"></span>
+                <span className="w-1 bg-rose-500 rounded-full animate-bounce h-2 [animation-delay:300ms]"></span>
+                <span className="w-1 bg-rose-500 rounded-full animate-bounce h-4 [animation-delay:450ms]"></span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={stopVoiceRecording}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+            >
+              <Square className="w-3 h-3 fill-current" />
+              Done Speaking
+            </button>
+          </div>
+        )}
+
+        {isTranscribing && (
+          <div className="mb-4 p-3.5 bg-purple-50 border border-purple-200 rounded-2xl flex items-center gap-3">
+            <Loader2 className="w-4 h-4 text-purple-600 animate-spin shrink-0" />
+            <span className="text-xs font-semibold text-purple-900">
+              Transcribing audio with AI...
+            </span>
+          </div>
+        )}
+
+        {recordingError && (
+          <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-800">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{recordingError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRecordingError(null)}
+              className="text-amber-900 hover:text-amber-950 font-bold ml-2 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Answer Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <textarea
               className="input-field min-h-[180px] resize-y p-4 bg-white border-slate-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 rounded-2xl text-sm leading-relaxed"
-              placeholder="Structure your answer using the STAR method: Describe the Situation, the Task, the Actions you took, and the measurable Result..."
+              placeholder="Structure your answer using the STAR method: Describe the Situation, the Task, the Actions you took, and the measurable Result... (Type or click the microphone to speak)"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              disabled={isLoading}
+              disabled={isLoading || isTranscribing}
             />
             
             <div className="absolute bottom-3 right-3 flex items-center gap-2">
               <button
                 type="button"
-                onClick={toggleMockSpeech}
-                className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                onClick={handleToggleVoice}
+                disabled={isLoading || isTranscribing}
+                className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
                   isRecording 
-                    ? 'bg-rose-500 text-white animate-pulse' 
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse' 
+                    : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200'
                 }`}
-                title="Voice input simulation"
+                title={isRecording ? 'Click to stop recording' : 'Click to speak your answer'}
               >
                 {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                <span>{isRecording ? 'Listening...' : 'Voice Dictate'}</span>
+                <span>{isRecording ? 'Stop Recording' : 'Voice Dictate'}</span>
               </button>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-            <div className="text-xs text-slate-400 font-medium">
-              Word count: {answer.trim() ? answer.trim().split(/\s+/).length : 0} words
+            <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
+              <span>Word count: {answer.trim() ? answer.trim().split(/\s+/).length : 0} words</span>
+              {isRecording && (
+                <span className="text-rose-600 font-bold flex items-center gap-1">
+                  <Volume2 className="w-3 h-3" /> Live Mic Active
+                </span>
+              )}
             </div>
 
             <button 
               type="submit" 
               className="btn-primary py-3 px-6 bg-purple-600 hover:bg-purple-500 focus-visible:outline-purple-600 shadow-sm flex items-center justify-center gap-2 text-sm font-bold" 
-              disabled={isLoading || !answer.trim()}
+              disabled={isLoading || isTranscribing || !answer.trim()}
             >
-              {isLoading ? 'Evaluating...' : 'Submit Answer'}
-              <Send className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Evaluating...
+                </>
+              ) : (
+                <>
+                  Submit Answer
+                  <Send className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </form>

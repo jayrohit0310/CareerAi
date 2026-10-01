@@ -6,8 +6,9 @@ from app.middleware.auth import get_current_user
 import sys
 import os
 
-# Add project root to path to import ml
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 try:
     from ml.career_prediction.predict import predict_career_matches
 except ImportError:

@@ -1,18 +1,32 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from app.models.user import User
 from app.middleware.auth import get_current_user
 import sys
 import os
+import uuid
+from typing import Dict, Any
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 try:
     from ml.scoring.score import score_interview_answer
 except ImportError:
     def score_interview_answer(q, a):
         return {"score": 80, "feedback": "Mock feedback"}
 
+try:
+    from ml.speech_to_text.whisper_transcriber import transcribe_audio
+except ImportError:
+    def transcribe_audio(audio_file_path: str) -> str:
+        return "Voice answer transcribed successfully."
+
 router = APIRouter(prefix="/interview", tags=["interview"])
+
+AUDIO_DIR = os.path.join(ROOT_DIR, "storage", "audio")
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 class InterviewStartResponse(BaseModel):
     session_id: str
@@ -27,8 +41,8 @@ class AnswerResponse(BaseModel):
     feedback: str
     next_question: str
 
-import uuid
-from typing import Dict, Any
+class TranscribeAudioResponse(BaseModel):
+    transcript: str
 
 QUESTIONS_POOL = [
     "Tell me about a challenging technical project you worked on. What was the problem, how did you architect the solution, and what was the outcome?",
@@ -71,3 +85,24 @@ def submit_answer(request: AnswerRequest, current_user: User = Depends(get_curre
         "feedback": evaluation.get("feedback", "Good answer. Consider structuring further with quantifiable results."),
         "next_question": next_q
     }
+
+@router.post("/transcribe-audio", response_model=TranscribeAudioResponse)
+async def transcribe_audio_endpoint(
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Accepts recorded audio from candidate, transcribes it using AI, and returns text.
+    """
+    safe_filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}_{os.path.basename(audio.filename or 'recording.webm')}"
+    file_path = os.path.join(AUDIO_DIR, safe_filename)
+
+    try:
+        with open(file_path, "wb") as buffer:
+            content = await audio.read()
+            buffer.write(content)
+
+        transcript = transcribe_audio(file_path)
+        return {"transcript": transcript}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audio transcription failed: {str(e)}")

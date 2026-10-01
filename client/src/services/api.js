@@ -139,3 +139,14 @@ export const getJobRecommendations = async () => {
   const response = await api.get('/jobs/recommendations');
   return response.data;
 };
+
+export const transcribeAudio = async (audioBlob) => {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'interview_answer.webm');
+  const response = await api.post('/interview/transcribe-audio', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
