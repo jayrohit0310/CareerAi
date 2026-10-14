@@ -10,12 +10,13 @@ def get_gemini_api_key() -> str:
         try:
             root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.env"))
             if os.path.exists(root_env):
-                for line in open(root_env, encoding="utf-8"):
-                    line = line.strip()
-                    if line.startswith("GEMINI_API_KEY="):
-                        val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        if val and val != "your_gemini_api_key_here":
-                            return val
+                with open(root_env, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("GEMINI_API_KEY="):
+                            val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            if val and val != "your_gemini_api_key_here":
+                                return val
         except Exception:
             pass
     return key

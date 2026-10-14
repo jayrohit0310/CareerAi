@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy.orm import relationship
 from app.models.base import Base
 
 class User(Base):
@@ -11,3 +12,8 @@ class User(Base):
     # ML Extracted Data
     extracted_skills = Column(Text, nullable=True) # Stored as comma separated string
     predicted_role = Column(String, nullable=True)
+
+    # Relationships
+    resumes = relationship("Resume", backref="user", cascade="all, delete-orphan")
+    interviews = relationship("InterviewSession", backref="user", cascade="all, delete-orphan")
+

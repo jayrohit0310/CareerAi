@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { api, updateSkills } from '../services/api';
+import { api, updateSkills, getInterviewAnalytics, getInterviewHistory } from '../services/api';
+import { useToast } from '../context/ToastContext';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
 import { 
   UploadCloud, 
   FileText, 
-  CheckCircle, 
+  CheckCircle2, 
   ArrowRight, 
   TrendingUp, 
   Mic, 
@@ -15,22 +19,39 @@ import {
   X, 
   Target, 
   CheckCheck,
-  ShieldCheck
+  GripVertical,
+  Activity,
+  RefreshCw,
+  Award,
+  History,
+  AlertTriangle,
+  Play
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { user, setUser } = useOutletContext();
-  const [uploadStatus, setUploadStatus] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
   const [skills, setSkills] = useState([]);
   const [customSkill, setCustomSkill] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('Senior_Software_Engineer_Resume.pdf');
+  
+  // Drag-and-drop skills reordering state
+  const [draggedSkillIndex, setDraggedSkillIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  // Mock interview analytics state
+  const [interviewAnalytics, setInterviewAnalytics] = useState(null);
+  const [recentInterviews, setRecentInterviews] = useState([]);
+
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const toast = useToast();
 
   const suggestedSkills = [
     'Python', 'React', 'FastAPI', 'Machine Learning', 
-    'Docker', 'PostgreSQL', 'TypeScript', 'Tailwind CSS', 'AWS'
+    'Docker', 'PostgreSQL', 'TypeScript', 'Tailwind CSS', 'AWS', 'Kubernetes'
   ];
 
   useEffect(() => {
@@ -43,11 +64,28 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const loadInterviewData = async () => {
+      try {
+        const [analytics, history] = await Promise.all([
+          getInterviewAnalytics(),
+          getInterviewHistory()
+        ]);
+        setInterviewAnalytics(analytics);
+        setRecentInterviews((history.history || []).slice(0, 4));
+      } catch (err) {
+        console.warn('Could not load interview analytics:', err);
+      }
+    };
+    loadInterviewData();
+  }, []);
+
   const handleFileUpload = async (file) => {
     if (!file) return;
     
-    if (file.type !== 'application/pdf') {
-      setUploadStatus('Please upload a valid PDF file.');
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'docx', 'doc'].includes(ext)) {
+      toast.error('Please upload a valid PDF or DOCX resume document.', 'Invalid Format');
       return;
     }
 
@@ -60,21 +98,24 @@ export default function Dashboard() {
       const res = await api.post('/resume/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setUploadStatus(`Success: ${res.data.filename || file.name} parsed!`);
+      const name = res.data.filename || file.name;
+      setUploadedFileName(name);
+      toast.success(`${name} parsed and skills extracted!`, 'Resume Processed');
       if (res.data.skills) {
         setSkills(res.data.skills);
         setUser(prev => ({ ...prev, extracted_skills: res.data.skills.join(',') }));
       }
     } catch (err) {
-      setUploadStatus(err.response?.data?.detail || 'Failed to upload resume. Make sure backend is running.');
+      const errMsg = err.response?.data?.detail || 'Failed to upload resume. Make sure backend is running.';
+      toast.error(errMsg, 'Upload Error');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDropFile = (e) => {
     e.preventDefault();
-    setIsDragging(false);
+    setIsDraggingFile(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(e.dataTransfer.files[0]);
     }
@@ -82,11 +123,16 @@ export default function Dashboard() {
 
   const handleAddSkill = async (skillToAdd) => {
     const s = (skillToAdd || customSkill).trim();
-    if (!s || skills.includes(s)) return;
+    if (!s) return;
+    if (skills.some(existing => existing.toLowerCase() === s.toLowerCase())) {
+      toast.info(`"${s}" is already in your skills list.`, 'Duplicate Skill');
+      return;
+    }
     const newSkills = [...skills, s];
     setSkills(newSkills);
     setCustomSkill('');
     setUser(prev => ({ ...prev, extracted_skills: newSkills.join(',') }));
+    toast.success(`Added "${s}" to your profile.`, 'Skill Added');
     try {
       await updateSkills(newSkills);
     } catch (err) {
@@ -98,6 +144,7 @@ export default function Dashboard() {
     const newSkills = skills.filter(s => s !== skillToRemove);
     setSkills(newSkills);
     setUser(prev => ({ ...prev, extracted_skills: newSkills.join(',') }));
+    toast.info(`Removed "${skillToRemove}".`, 'Skill Removed');
     try {
       await updateSkills(newSkills);
     } catch (err) {
@@ -106,10 +153,11 @@ export default function Dashboard() {
   };
 
   const handleLoadSample = async () => {
-    const sampleSkills = ['Python', 'FastAPI', 'React', 'Docker', 'Machine Learning', 'SQL'];
+    const sampleSkills = ['Python', 'FastAPI', 'React', 'Docker', 'Machine Learning', 'PostgreSQL', 'TypeScript'];
     setSkills(sampleSkills);
     setUser(prev => ({ ...prev, extracted_skills: sampleSkills.join(',') }));
-    setUploadStatus('Loaded sample engineering profile!');
+    setUploadedFileName('Sample_FullStack_Engineer.pdf');
+    toast.success('Loaded sample engineering candidate profile with 7 skills!', 'Sample Profile Loaded');
     try {
       await updateSkills(sampleSkills);
     } catch (err) {
@@ -117,121 +165,224 @@ export default function Dashboard() {
     }
   };
 
-  const readinessScore = Math.min(100, Math.max(35, skills.length * 15));
+  // Drag and drop reordering handlers for skills
+  const handleDragStart = (index, e) => {
+    setDraggedSkillIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Transparent or custom drag preview
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (index, e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedSkillIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDropSkill = async (dropIndex) => {
+    if (draggedSkillIndex === null || draggedSkillIndex === dropIndex) {
+      setDraggedSkillIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const reordered = [...skills];
+    const [draggedItem] = reordered.splice(draggedSkillIndex, 1);
+    reordered.splice(dropIndex, 0, draggedItem);
+
+    setSkills(reordered);
+    setUser(prev => ({ ...prev, extracted_skills: reordered.join(',') }));
+    setDraggedSkillIndex(null);
+    setDragOverIndex(null);
+    toast.success(`Repositioned "${draggedItem}" in your priority list.`, 'Order Updated');
+
+    try {
+      await updateSkills(reordered);
+    } catch (err) {
+      console.warn('Could not sync skills order to server:', err);
+    }
+  };
+
+  const readinessScore = Math.min(100, Math.max(35, skills.length * 14));
 
   return (
-    <div className="space-y-8">
-      {/* Top Banner / Welcome */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg">
-        <div className="space-y-2 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/15 backdrop-blur-md rounded-full text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-blue-200" />
-            AI Career Assistant
+    <div className="space-y-8 animate-fade-in">
+      {/* Top Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 p-7 sm:p-9 text-white shadow-xl">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-blue-200 border border-white/15">
+              <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+              <span>AI Career Copilot Active</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Welcome back, {user?.email ? user.email.split('@')[0] : 'Engineer'}!
+            </h1>
+            <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+              Your talent intelligence dashboard is synced. Upload an updated resume or adjust your prioritized skills below to unlock new role matches, mock questions, and benchmarked salaries.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome to CareerCraft AI
-          </h1>
-          <p className="text-sm sm:text-base text-blue-100 leading-relaxed">
-            Upload your resume or specify your skills below to unlock instant career reports, interview practice, salary benchmarks, and targeted jobs.
-          </p>
-        </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center justify-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-bold px-5 py-3 rounded-xl shadow-md text-sm transition-all"
-          >
-            <UploadCloud className="w-4 h-4 text-blue-600" />
-            Upload Resume
-          </button>
-          <button
-            onClick={handleLoadSample}
-            className="inline-flex items-center justify-center gap-2 bg-blue-500/30 hover:bg-blue-500/40 text-white font-semibold px-4 py-3 rounded-xl border border-white/20 text-sm transition-all"
-          >
-            Try Sample Data
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="secondary"
+              size="md"
+              icon={UploadCloud}
+              className="bg-white text-blue-700 hover:bg-blue-50 shadow-md border-transparent"
+            >
+              Upload PDF Resume
+            </Button>
+            <Button
+              onClick={handleLoadSample}
+              variant="outline"
+              size="md"
+              icon={RefreshCw}
+              className="text-white border-white/20 hover:bg-white/10"
+            >
+              Try Sample Data
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Stats Quick Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card-base p-5 bg-white border border-slate-200">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Identified Skills</span>
-            <CheckCheck className="w-4 h-4 text-blue-600" />
+      {/* KPI Stats Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <Card hover className="p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Identified Skills</span>
+            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+              <CheckCheck className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900">{skills.length}</div>
-          <p className="text-xs text-slate-500 mt-1">
-            {skills.length > 0 ? 'Extracted & verified' : 'Add skills to analyze'}
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">{skills.length}</div>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
+              +3 verified ↑
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            {skills.length > 0 ? 'Extracted & prioritized' : 'Add skills to analyze'}
           </p>
-        </div>
+        </Card>
 
-        <div className="card-base p-5 bg-white border border-slate-200">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Profile Match Score</span>
-            <Target className="w-4 h-4 text-emerald-600" />
+        <Card hover className="p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Profile Match Score</span>
+            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+              <Target className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-600">{readinessScore}%</div>
-          <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{readinessScore}%</div>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              Strong
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2.5 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+              className="bg-emerald-500 h-2 rounded-full transition-all duration-700" 
               style={{ width: `${readinessScore}%` }}
-            ></div>
+            />
           </div>
-        </div>
+        </Card>
 
-        <div className="card-base p-5 bg-white border border-slate-200">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Salary Potential</span>
-            <TrendingUp className="w-4 h-4 text-indigo-600" />
+        <Card hover className="p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Target Compensation</span>
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+              <TrendingUp className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900">$120k+</div>
-          <p className="text-xs text-slate-500 mt-1">Based on market median</p>
-        </div>
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">₹24 LPA+</div>
+            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+              Top 20%
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Median benchmark for skills</p>
+        </Card>
 
-        <div className="card-base p-5 bg-white border border-slate-200">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Interview Status</span>
-            <Mic className="w-4 h-4 text-purple-600" />
+        <Card hover className="p-5">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Interview Mastery</span>
+            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+              <Mic className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-purple-600">Ready</div>
-          <p className="text-xs text-slate-500 mt-1">AI Mock interviewer active</p>
-        </div>
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">
+              {interviewAnalytics?.total_completed > 0 ? `${interviewAnalytics.average_score_10}/10` : 'Ready'}
+            </div>
+            <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
+              {interviewAnalytics?.total_completed > 0 ? `${interviewAnalytics.total_completed} Done` : 'Configurable'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            {interviewAnalytics?.total_completed > 0 ? 'Avg Mock Interview Score' : 'STAR Evaluation enabled'}
+          </p>
+        </Card>
       </div>
 
-      {/* Main Grid: Left Upload & Right Analysis */}
+      {/* Main Grid: Left Upload & Draggable Skills, Right Insights & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column: Resume & Skills */}
+        {/* Left Column: Drag & Drop Resume and Draggable Skills */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="card-base p-6">
+          <Card className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-2xl">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Resume Parser</h2>
-                <p className="text-xs text-slate-500">Auto-extract skills & experience</p>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Resume Parser</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">PDF skill & experience extractor</p>
               </div>
             </div>
             
+            {/* High-Fidelity Drag & Drop Zone */}
             <div 
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-                isDragging 
-                  ? 'border-blue-500 bg-blue-50/70 scale-[1.01]' 
-                  : isUploading 
-                  ? 'border-blue-400 bg-blue-50' 
-                  : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50/60'
-              }`}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+              onDragLeave={() => setIsDraggingFile(false)}
+              onDrop={handleDropFile}
+              className={`
+                border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer
+                ${
+                  isDraggingFile 
+                    ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-950/50 scale-[1.02] shadow-lg ring-4 ring-blue-500/10' 
+                    : isUploading 
+                    ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20' 
+                    : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
+                }
+              `}
+              onClick={() => fileInputRef.current?.click()}
             >
-              <UploadCloud className={`w-12 h-12 mx-auto mb-3 transition-transform ${isUploading ? 'animate-bounce text-blue-600' : 'text-slate-400'}`} />
-              <p className="text-sm font-semibold text-slate-800 mb-1">
-                {isUploading ? 'Analyzing resume with AI...' : 'Drag & drop your resume PDF'}
+              <div className="relative inline-block mb-3">
+                <UploadCloud 
+                  className={`w-12 h-12 mx-auto transition-transform duration-200 ${
+                    isUploading ? 'animate-bounce text-blue-600' : isDraggingFile ? 'scale-110 text-blue-600' : 'text-slate-400 dark:text-slate-500'
+                  }`} 
+                />
+                {isDraggingFile && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping" />
+                )}
+              </div>
+
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
+                {isUploading ? (uploadStatus || 'Parsing document with AI...') : isDraggingFile ? 'Drop your PDF right here!' : 'Drag & drop your resume PDF'}
               </p>
-              <p className="text-xs text-slate-500 mb-4">Supports PDF up to 5MB</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                Click or drop files up to 5MB (PDF only)
+              </p>
               
               <input 
                 type="file" 
@@ -240,82 +391,122 @@ export default function Dashboard() {
                 ref={fileInputRef}
                 onChange={(e) => handleFileUpload(e.target.files[0])}
               />
-              <button 
-                onClick={() => fileInputRef.current.click()}
+              
+              <Button 
+                variant="secondary"
+                size="sm"
+                fullWidth
                 disabled={isUploading}
-                className="btn-secondary w-full py-2.5 text-sm font-medium"
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
               >
                 Browse PDF File
-              </button>
-              
-              {uploadStatus && (
-                <div className={`mt-4 p-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold ${
-                  uploadStatus.includes('Success') || uploadStatus.includes('Loaded') 
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                    : 'bg-rose-50 text-rose-700 border border-rose-200'
-                }`}>
-                  {(uploadStatus.includes('Success') || uploadStatus.includes('Loaded')) && <CheckCircle className="w-4 h-4 shrink-0" />}
-                  <span>{uploadStatus}</span>
-                </div>
-              )}
+              </Button>
             </div>
 
-            {/* Quick Skills Management */}
-            <div className="mt-6 pt-6 border-t border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
-                <span>Manage Skills</span>
-                <span className="text-xs font-normal text-slate-500">{skills.length} added</span>
-              </h3>
+            {/* Uploaded File Pill Indicator */}
+            {skills.length > 0 && (
+              <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs animate-fade-in">
+                <div className="flex items-center gap-2 truncate">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{uploadedFileName}</span>
+                </div>
+                <Badge variant="emerald" size="sm">Active</Badge>
+              </div>
+            )}
 
+            {/* Draggable Skills Management Section */}
+            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>Talent Inventory</span>
+                  <Badge variant="blue" size="sm">{skills.length}</Badge>
+                </h3>
+                <span className="text-[10px] text-slate-400">Drag to reorder</span>
+              </div>
+
+              {/* Add Custom Skill Form */}
               <div className="flex gap-2 mb-3">
                 <input
                   type="text"
-                  placeholder="Add a skill (e.g. Python)"
+                  placeholder="Add skill (e.g. PyTorch)..."
                   value={customSkill}
                   onChange={(e) => setCustomSkill(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
                   className="input-field text-xs py-2 px-3 flex-1"
                 />
-                <button
+                <Button
                   onClick={() => handleAddSkill()}
                   disabled={!customSkill.trim()}
-                  className="btn-primary py-2 px-3 text-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
+                  variant="primary"
+                  size="sm"
+                  icon={Plus}
+                />
               </div>
 
-              {/* Skills Tags */}
-              <div className="flex flex-wrap gap-1.5 min-h-[50px] max-h-48 overflow-y-auto p-1">
+              {/* Smooth Draggable Skills Chips Container */}
+              <div className="space-y-1.5 max-h-60 overflow-y-auto p-1 no-scrollbar">
                 {skills.length > 0 ? (
-                  skills.map((skill, index) => (
-                    <span 
-                      key={index} 
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 group"
-                    >
-                      {skill}
-                      <button 
-                        onClick={() => handleRemoveSkill(skill)}
-                        className="text-blue-400 hover:text-blue-700 ml-0.5"
+                  skills.map((skill, index) => {
+                    const isBeingDragged = draggedSkillIndex === index;
+                    const isDropTarget = dragOverIndex === index;
+
+                    return (
+                      <div
+                        key={skill}
+                        draggable
+                        onDragStart={(e) => handleDragStart(index, e)}
+                        onDragOver={(e) => handleDragOver(index, e)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={() => handleDropSkill(index)}
+                        className={`
+                          group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold
+                          border transition-all duration-150 cursor-grab active:cursor-grabbing select-none
+                          ${
+                            isBeingDragged
+                              ? 'opacity-40 scale-95 border-dashed border-blue-500 bg-blue-50/50'
+                              : isDropTarget
+                              ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50 dark:bg-blue-950/60 scale-[1.02]'
+                              : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-2xs'
+                          }
+                        `}
                       >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))
+                        <div className="flex items-center gap-2 truncate">
+                          <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 shrink-0 transition-colors" />
+                          <span className="truncate">{skill}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 group-hover:hidden">#{index + 1}</span>
+                          <button 
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-0.5 rounded transition-colors"
+                            aria-label={`Remove ${skill}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No skills listed yet. Add one above or click suggestions below.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic p-3 text-center">
+                    No skills registered. Upload your resume or click suggestions below.
+                  </p>
                 )}
               </div>
 
-              {/* Suggested quick chips */}
-              <div className="mt-4 pt-3 border-t border-slate-100">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Quick Add Suggestions</span>
-                <div className="flex flex-wrap gap-1">
-                  {suggestedSkills.filter(s => !skills.includes(s)).slice(0, 5).map((skill, i) => (
+              {/* Quick Add Suggested Chips */}
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Suggested Additions
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestedSkills.filter(s => !skills.includes(s)).slice(0, 6).map((skill, i) => (
                     <button
                       key={i}
                       onClick={() => handleAddSkill(skill)}
-                      className="text-xs px-2 py-1 rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 transition-colors"
+                      className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
                     >
                       + {skill}
                     </button>
@@ -323,101 +514,302 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
-        {/* Right Column: AI Analysis & Action Grid */}
+        {/* Right Column: AI Analysis & Quick Action Grid */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* AI Matches Banner */}
-          <div className="card-base p-6 bg-white border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
+          {/* AI Matches Highlights Banner */}
+          <Card className="p-6 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">AI Career Pathway Evaluation</h2>
-                <p className="text-sm text-slate-500">Real-time analysis based on your skill inventory</p>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">AI Career Pathway Evaluation</h2>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Real-time matching against high-demand industry profiles</p>
               </div>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <ShieldCheck className="w-3.5 h-3.5" /> Market Verified
-              </span>
+              <Badge variant="emerald" size="md" dot>
+                Market Verified
+              </Badge>
             </div>
 
             {skills.length > 0 ? (
               <div className="space-y-5">
-                <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/80 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-blue-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Top Match Ready</span>
-                    <h3 className="text-emerald-950 font-extrabold text-lg">Senior Full-Stack & AI Systems Engineer</h3>
-                    <p className="text-emerald-700 text-sm">
-                      Your skill profile shows strong synergy with high-demand software & AI roles.
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Top Match Ready</span>
+                    <h3 className="text-emerald-950 dark:text-emerald-100 font-extrabold text-lg sm:text-xl">
+                      Senior Full-Stack & AI Systems Engineer
+                    </h3>
+                    <p className="text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm leading-relaxed">
+                      Your skill inventory shows a 94% compatibility with modern generative AI and cloud engineering architectures.
                     </p>
                   </div>
-                  <button 
+                  <Button 
                     onClick={() => navigate('/career-report')} 
-                    className="shrink-0 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm"
+                    variant="success"
+                    size="md"
+                    className="shrink-0"
+                    iconRight={ArrowRight}
                   >
-                    View Matches <ArrowRight className="w-4 h-4" />
-                  </button>
+                    View Matches
+                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-xs text-slate-500 block">Primary Focus</span>
-                    <span className="text-sm font-bold text-slate-900">Software & AI</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-0.5">Primary Focus</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100">Software & AI</span>
                   </div>
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-xs text-slate-500 block">Core Competencies</span>
-                    <span className="text-sm font-bold text-slate-900">{skills.slice(0, 3).join(', ') || 'N/A'}</span>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-0.5">Top Verified Skills</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate block">
+                      {skills.slice(0, 3).join(', ') || 'N/A'}
+                    </span>
                   </div>
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <span className="text-xs text-slate-500 block">Recommended Action</span>
-                    <span className="text-sm font-bold text-blue-600">Practice Mock Interview</span>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-0.5">Recommended Next Step</span>
+                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400 truncate block">
+                      Take Mock Interview
+                    </span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="h-44 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-6 text-center">
+              <div className="h-44 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center p-6 text-center">
                 <FileText className="w-8 h-8 text-slate-400 mb-2" />
-                <p className="text-sm font-medium text-slate-700">No skills identified yet</p>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm">Upload a PDF resume or click "Try Sample Data" above to view full AI career pathway analytics.</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No skills identified yet</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm">Upload a PDF resume or click "Try Sample Data" to activate AI career reports.</p>
               </div>
             )}
+          </Card>
+
+          {/* AI Mock Interview Mastery & History Section */}
+          <Card className="p-6 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-purple-600" />
+                  Interview Preparation & Performance Mastery
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                  Track your evaluation scores, difficulty progression, and weak topic improvements
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate('/interview')}
+                variant="primary"
+                size="sm"
+                iconRight={ArrowRight}
+                className="bg-purple-600 hover:bg-purple-500"
+              >
+                Launch Simulator
+              </Button>
+            </div>
+
+            {interviewAnalytics && interviewAnalytics.total_completed > 0 ? (
+              <div className="space-y-5">
+                {/* 3 Difficulty Level Performance Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/60 text-xs">
+                    <span className="font-bold text-emerald-800 dark:text-emerald-200 block mb-1">
+                      Beginner Tier
+                    </span>
+                    <div className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">
+                      {interviewAnalytics.difficulty_stats?.beginner?.avg_score || 0} / 10
+                    </div>
+                    <span className="text-[10px] text-emerald-600">
+                      {interviewAnalytics.difficulty_stats?.beginner?.count || 0} sessions completed
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900/60 text-xs">
+                    <span className="font-bold text-blue-800 dark:text-blue-200 block mb-1">
+                      Intermediate Tier
+                    </span>
+                    <div className="text-xl font-extrabold text-blue-700 dark:text-blue-300">
+                      {interviewAnalytics.difficulty_stats?.intermediate?.avg_score || 0} / 10
+                    </div>
+                    <span className="text-[10px] text-blue-600">
+                      {interviewAnalytics.difficulty_stats?.intermediate?.count || 0} sessions completed
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-100 dark:border-purple-900/60 text-xs">
+                    <span className="font-bold text-purple-800 dark:text-purple-200 block mb-1">
+                      Advanced Tier
+                    </span>
+                    <div className="text-xl font-extrabold text-purple-700 dark:text-purple-300">
+                      {interviewAnalytics.difficulty_stats?.advanced?.avg_score || 0} / 10
+                    </div>
+                    <span className="text-[10px] text-purple-600">
+                      {interviewAnalytics.difficulty_stats?.advanced?.count || 0} sessions completed
+                    </span>
+                  </div>
+                </div>
+
+                {/* Weak Topics & Next Recommended Practice */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block mb-2 flex items-center gap-1.5 text-amber-600">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Frequent Focus Areas Identified:
+                    </span>
+                    {interviewAnalytics.weak_topics?.length > 0 ? (
+                      <ul className="space-y-1.5 text-slate-600 dark:text-slate-300">
+                        {interviewAnalytics.weak_topics.map((wt, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="text-amber-500">•</span>
+                            <span>{wt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-slate-500 italic">No recurring weaknesses detected. Great job!</p>
+                    )}
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-xs">
+                    <span className="font-bold text-purple-900 dark:text-purple-200 block mb-1">
+                      Suggested Next Practice Session:
+                    </span>
+                    <p className="text-purple-700 dark:text-purple-300 mb-3 font-semibold">
+                      {interviewAnalytics.recommended_next_session?.label || '15-Min Intermediate Mock'}
+                    </p>
+                    <Button
+                      onClick={() => navigate('/interview')}
+                      variant="primary"
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-500 text-xs"
+                    >
+                      Start Recommended Session
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Recent Interview History Feed */}
+                {recentInterviews.length > 0 && (
+                  <div className="pt-2">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                      Recent Interview Sessions
+                    </h3>
+                    <div className="space-y-2">
+                      {recentInterviews.map((sess) => (
+                        <div key={sess.session_id} className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 capitalize">
+                              {sess.interview_type} ({sess.difficulty})
+                            </span>
+                            <span className="text-slate-400 block text-[11px]">
+                              {sess.started_at ? new Date(sess.started_at).toLocaleDateString() : 'Recent'} • {sess.duration_minutes}m
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            {sess.overall_score !== null && (
+                              <Badge variant={sess.overall_score >= 8.0 ? 'emerald' : 'purple'} size="sm">
+                                {sess.overall_score} / 10
+                              </Badge>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => navigate('/interview')}
+                              className="text-purple-600 dark:text-purple-400 hover:underline font-bold"
+                            >
+                              Review
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 text-center">
+                <Mic className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No mock interviews completed yet</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto mb-4">
+                  Test your engineering knowledge against custom time limits, configure beginner to advanced difficulties, and receive STAR feedback grounded in your resume.
+                </p>
+                <Button
+                  onClick={() => navigate('/interview')}
+                  variant="primary"
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-500"
+                  icon={Play}
+                >
+                  Start First Practice Session
+                </Button>
+              </div>
+            )}
+          </Card>
+
+
+          {/* Action Grid: 4 Modern Interactive Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InteractiveActionCard 
+              icon={<TrendingUp className="w-6 h-6" />}
+              title="Salary Benchmark"
+              badge="Updated"
+              description="Calculate your market value percentile across experience levels, tech hubs, and verified skills."
+              onClick={() => navigate('/results')}
+              colorClass="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/60"
+            />
+            <InteractiveActionCard 
+              icon={<Mic className="w-6 h-6" />}
+              title="AI Mock Interviews"
+              badge="Voice Practice"
+              description="Rehearse real technical & behavioral questions with real-time speech dictation and STAR feedback."
+              onClick={() => navigate('/interview')}
+              colorClass="bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/60"
+            />
+            <InteractiveActionCard 
+              icon={<BookOpen className="w-6 h-6" />}
+              title="Targeted Courses"
+              badge="Upskilling"
+              description="Discover hand-picked educational modules specifically aligned to close your detected skill gaps."
+              onClick={() => navigate('/courses')}
+              colorClass="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/60"
+            />
+            <InteractiveActionCard 
+              icon={<Briefcase className="w-6 h-6" />}
+              title="Curated Job Listings"
+              badge="Active Postings"
+              description="Explore vetted positions matching your exact skill profile, compensation target, and work type."
+              onClick={() => navigate('/jobs')}
+              colorClass="bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/60"
+            />
           </div>
 
-          {/* Action Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ActionCard 
-              icon={<TrendingUp className="w-6 h-6" />}
-              title="Salary Estimator"
-              badge="Updated"
-              description="Get an AI estimate of your market compensation and percentile breakdown."
-              onClick={() => navigate('/results')}
-              colorClass="bg-indigo-50 text-indigo-600 border-indigo-100"
-            />
-            <ActionCard 
-              icon={<Mic className="w-6 h-6" />}
-              title="Mock AI Interviews"
-              badge="Live Practice"
-              description="Rehearse real behavioral and technical interview questions with instant AI feedback."
-              onClick={() => navigate('/interview')}
-              colorClass="bg-purple-50 text-purple-600 border-purple-100"
-            />
-            <ActionCard 
-              icon={<BookOpen className="w-6 h-6" />}
-              title="Course Recommendations"
-              badge="Upskill"
-              description="Discover hand-picked learning courses to fill the exact skill gaps on your resume."
-              onClick={() => navigate('/courses')}
-              colorClass="bg-amber-50 text-amber-600 border-amber-100"
-            />
-            <ActionCard 
-              icon={<Briefcase className="w-6 h-6" />}
-              title="Targeted Job Listings"
-              badge="Hiring Now"
-              description="Explore vetted job opportunities matched directly to your current skill set."
-              onClick={() => navigate('/jobs')}
-              colorClass="bg-rose-50 text-rose-600 border-rose-100"
-            />
-          </div>
+          {/* Recent Activity Timeline Feed */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                Recent System Activity
+              </h3>
+              <span className="text-xs text-slate-400">Real-time sync</span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-800 dark:text-slate-200">Resume parsed and evaluated</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px]">Identified {skills.length} competencies ready for market matching.</p>
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0">Just now</span>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-800 dark:text-slate-200">AI Career Coach primed</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px]">Contextual advisor available 24/7 for interview coaching.</p>
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0">1h ago</span>
+              </div>
+            </div>
+          </Card>
           
         </div>
       </div>
@@ -425,31 +817,35 @@ export default function Dashboard() {
   );
 }
 
-function ActionCard({ icon, title, badge, description, onClick, colorClass }) {
+function InteractiveActionCard({ icon, title, badge, description, onClick, colorClass }) {
   return (
-    <div 
-      className="card-base p-6 flex flex-col hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group bg-white border border-slate-200" 
+    <Card 
+      hover 
       onClick={onClick}
+      className="p-6 flex flex-col cursor-pointer group hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-200"
     >
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-xl border ${colorClass}`}>
+        <div className={`p-3 rounded-2xl border ${colorClass} transition-transform group-hover:scale-105`}>
           {icon}
         </div>
         {badge && (
-          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+          <Badge variant="slate" size="sm">
             {badge}
-          </span>
+          </Badge>
         )}
       </div>
-      <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+
+      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
         {title}
       </h3>
-      <p className="text-sm text-slate-500 mt-1.5 mb-5 flex-1 leading-relaxed">
+
+      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 mb-5 flex-1 leading-relaxed">
         {description}
       </p>
-      <div className="flex items-center text-sm font-semibold text-slate-400 group-hover:text-blue-600 transition-colors mt-auto">
+
+      <div className="flex items-center text-xs font-bold text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mt-auto">
         Explore Tool <ArrowRight className="w-4 h-4 ml-1.5 transition-transform group-hover:translate-x-1" />
       </div>
-    </div>
+    </Card>
   );
 }

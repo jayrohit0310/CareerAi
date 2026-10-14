@@ -5,7 +5,7 @@ const DEFAULT_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export const api = axios.create({
   baseURL: DEFAULT_URL,
-  timeout: 10000,
+  timeout: 20000,
 });
 
 api.interceptors.request.use((config) => {
@@ -110,16 +110,81 @@ export const getSalaryEstimate = async (role, experienceYears) => {
   return response.data;
 };
 
-export const startInterview = async () => {
-  const response = await api.post('/interview/start');
+export const startInterview = async (config = {}) => {
+  const payload = {
+    resume_id: config.resume_id || null,
+    interview_type: config.interview_type || 'resume',
+    difficulty: config.difficulty || 'intermediate',
+    duration_minutes: config.duration_minutes || 15,
+    role_domain: config.role_domain || 'Full-Stack Software Engineering',
+    allow_followups: config.allow_followups !== false
+  };
+  const response = await api.post('/interview/start', payload);
   return response.data;
 };
 
-export const submitInterviewAnswer = async (sessionId, answerText) => {
+export const submitInterviewAnswer = async (sessionId, questionIndex, answerText) => {
   const response = await api.post('/interview/submit-answer', {
     session_id: sessionId,
+    question_index: questionIndex !== undefined ? questionIndex : 0,
     answer_text: answerText
   });
+  return response.data;
+};
+
+export const getInterviewOptions = async () => {
+  const response = await api.get('/interview/options');
+  return response.data;
+};
+
+export const getSessionState = async (sessionId) => {
+  const response = await api.get(`/interview/session/${sessionId}`);
+  return response.data;
+};
+
+export const endInterviewSession = async (sessionId, reason = 'completed') => {
+  const response = await api.post('/interview/end-session', {
+    session_id: sessionId,
+    reason: reason
+  });
+  return response.data;
+};
+
+export const getInterviewReport = async (sessionId) => {
+  const response = await api.get(`/interview/report/${sessionId}`);
+  return response.data;
+};
+
+export const getInterviewHistory = async () => {
+  const response = await api.get('/interview/history');
+  return response.data;
+};
+
+export const getInterviewAnalytics = async () => {
+  const response = await api.get('/interview/analytics');
+  return response.data;
+};
+
+// Resume management & review endpoints
+export const uploadResumeFile = async (formData) => {
+  const response = await api.post('/resume/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
+export const getResumesList = async () => {
+  const response = await api.get('/resume/list');
+  return response.data;
+};
+
+export const getResumeDetails = async (resumeId) => {
+  const response = await api.get(`/resume/${resumeId}`);
+  return response.data;
+};
+
+export const updateResumeDetails = async (resumeId, updatedData) => {
+  const response = await api.put(`/resume/${resumeId}`, updatedData);
   return response.data;
 };
 
@@ -135,8 +200,12 @@ export const getCourseRecommendations = async () => {
   return response.data;
 };
 
-export const getJobRecommendations = async () => {
-  const response = await api.get('/jobs/recommendations');
+export const getJobRecommendations = async (opportunityType = 'all') => {
+  const params = {};
+  if (opportunityType && opportunityType !== 'all') {
+    params.opportunity_type = opportunityType;
+  }
+  const response = await api.get('/jobs/recommendations', { params });
   return response.data;
 };
 

@@ -1,4 +1,4 @@
-﻿fastapi
+fastapi
 uvicorn
 sqlalchemy
 psycopg2-binary
@@ -11,3 +11,6 @@ python-dotenv
 PyMuPDF
 email-validator
 google-generativeai
+httpx
+pytest
+python-docx

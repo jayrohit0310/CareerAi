@@ -17,9 +17,12 @@ __pycache__/
 .ruff_cache/
 
 # Runtime uploads and generated data
-storage/audio/
-storage/resumes/
-server/storage/resumes/
+storage/audio/*
+!storage/audio/.gitkeep
+storage/resumes/*
+!storage/resumes/.gitkeep
+server/storage/resumes/*
+!server/storage/resumes/.gitkeep
 vector_db/
 
 # Local files

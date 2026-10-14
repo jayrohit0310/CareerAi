@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 from app.models.base import get_db
 from app.models.user import User
@@ -22,13 +22,12 @@ class UserCreate(BaseModel):
     password: str
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     email: EmailStr
     extracted_skills: Optional[str] = None
     predicted_role: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
 
 class SkillsUpdate(BaseModel):
     skills: List[str]

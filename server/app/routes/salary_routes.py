@@ -13,7 +13,7 @@ try:
     from ml.salary_prediction.predict_salary import predict_salary_range
 except ImportError:
     def predict_salary_range(role, exp):
-        return {"min_salary": 80000, "max_salary": 120000, "median_salary": 100000, "currency": "USD", "role": role}
+        return {"min_salary": 1200000, "max_salary": 2400000, "median_salary": 1800000, "currency": "INR", "role": role}
 
 router = APIRouter(prefix="/salary", tags=["salary"])
 

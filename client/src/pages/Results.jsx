@@ -1,53 +1,62 @@
 import { useState, useEffect } from 'react';
 import { getSalaryEstimate } from '../services/api';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 import { 
   TrendingUp, 
-  DollarSign, 
   BarChart3, 
   Info, 
-  CheckCircle2, 
-  MapPin, 
-  Briefcase, 
-  Sparkles,
-  ArrowUpRight,
-  ShieldCheck
+  Sparkles
 } from 'lucide-react';
+
+const roleBaseSalaries = {
+  'Senior Full-Stack & AI Engineer': { base: 2600000, lowRatio: 0.80, highRatio: 1.25, topRatio: 1.50 },
+  'Machine Learning Engineer': { base: 2800000, lowRatio: 0.82, highRatio: 1.30, topRatio: 1.55 },
+  'Cloud & DevOps Lead': { base: 2400000, lowRatio: 0.82, highRatio: 1.25, topRatio: 1.45 },
+  'Backend Systems Engineer': { base: 2200000, lowRatio: 0.80, highRatio: 1.25, topRatio: 1.40 },
+  'Data Scientist': { base: 2300000, lowRatio: 0.80, highRatio: 1.26, topRatio: 1.45 }
+};
+
+const experienceMultipliers = {
+  'entry': 0.72,
+  'mid': 0.90,
+  'senior': 1.15,
+  'lead': 1.35
+};
+
+const locationMultipliers = {
+  'remote_in': 1.0,
+  'bengaluru_hyd': 1.25,
+  'pune_ncr_mumbai': 1.15,
+  'tier2_in': 0.85
+};
+
+const locationLabels = {
+  'remote_in': 'All-India Remote',
+  'bengaluru_hyd': 'Bengaluru / Hyderabad',
+  'pune_ncr_mumbai': 'Pune / NCR / Mumbai',
+  'tier2_in': 'Tier-2 Tech Hubs'
+};
+
+const expYearsMap = {
+  'entry': 1,
+  'mid': 3,
+  'senior': 6,
+  'lead': 10
+};
+
+const formatLpa = (amount) => {
+  if (!amount) return '';
+  const lpa = (amount / 100000).toFixed(1);
+  return `${lpa} LPA`;
+};
 
 export default function Results() {
   const [selectedRole, setSelectedRole] = useState('Senior Full-Stack & AI Engineer');
   const [experienceLevel, setExperienceLevel] = useState('senior');
-  const [location, setLocation] = useState('remote');
+  const [location, setLocation] = useState('remote_in');
   const [salaryData, setSalaryData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const roleBaseSalaries = {
-    'Senior Full-Stack & AI Engineer': { base: 145000, lowRatio: 0.82, highRatio: 1.25, topRatio: 1.45 },
-    'Machine Learning Engineer': { base: 155000, lowRatio: 0.80, highRatio: 1.28, topRatio: 1.50 },
-    'Cloud & DevOps Lead': { base: 138000, lowRatio: 0.84, highRatio: 1.22, topRatio: 1.40 },
-    'Backend Systems Engineer': { base: 130000, lowRatio: 0.85, highRatio: 1.20, topRatio: 1.38 },
-    'Data Scientist': { base: 135000, lowRatio: 0.82, highRatio: 1.24, topRatio: 1.42 }
-  };
-
-  const experienceMultipliers = {
-    'entry': 0.72,
-    'mid': 0.90,
-    'senior': 1.15,
-    'lead': 1.35
-  };
-
-  const locationMultipliers = {
-    'remote': 1.0,
-    'sf_ny': 1.25,
-    'eu': 0.88,
-    'apac': 0.65
-  };
-
-  const expYearsMap = {
-    'entry': 1,
-    'mid': 3,
-    'senior': 6,
-    'lead': 10
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,7 +77,8 @@ export default function Results() {
 
   // Compute calculated metrics
   const activeRoleData = roleBaseSalaries[selectedRole] || roleBaseSalaries['Senior Full-Stack & AI Engineer'];
-  const baseSalary = activeRoleData.base * experienceMultipliers[experienceLevel] * locationMultipliers[location];
+  const locMultiplier = locationMultipliers[location] || 1.0;
+  const baseSalary = activeRoleData.base * experienceMultipliers[experienceLevel] * locMultiplier;
   
   const median = salaryData && !isLoading && selectedRole === salaryData.role 
     ? salaryData.median_salary 
@@ -79,44 +89,45 @@ export default function Results() {
   const topTier = Math.round(median * activeRoleData.topRatio);
 
   const skillPremiums = [
-    { skill: "Generative AI & LLM Pipelines", bump: "+$18,000 / yr", inDemand: true },
-    { skill: "Distributed Cloud Architecture (AWS/GCP)", bump: "+$14,000 / yr", inDemand: true },
-    { skill: "Vector Databases & Semantic Search", bump: "+$10,000 / yr", inDemand: false },
-    { skill: "Kubernetes & Production MLOps", bump: "+$12,000 / yr", inDemand: false }
+    { skill: "Generative AI & LLM Pipelines", bump: "+₹4,50,000 / yr (+4.5 LPA)", inDemand: true },
+    { skill: "Distributed Cloud Architecture (AWS/GCP)", bump: "+₹3,50,000 / yr (+3.5 LPA)", inDemand: true },
+    { skill: "Vector Databases & Semantic Search", bump: "+₹2,80,000 / yr (+2.8 LPA)", inDemand: false },
+    { skill: "Kubernetes & Production MLOps", bump: "+₹3,20,000 / yr (+3.2 LPA)", inDemand: false }
   ];
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      {/* Header bar */}
+    <div className="space-y-8 max-w-4xl mx-auto animate-fade-in">
+      {/* Top Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl shadow-xs">
+          <div className="p-3 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl shadow-2xs">
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900">AI Market Salary Estimator</h1>
-            <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
-              Personalized compensation benchmarking across experience, location, and verified skills.
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+              Indian Tech Salary & Compensation Estimator
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Live INR market benchmarking based on verified Indian engineering surveys, LPA standards, and tech hubs.
             </p>
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Real-time Market Baseline</span>
-        </div>
+        <Badge variant="emerald" size="md" dot>
+          ₹ INR Market Baseline
+        </Badge>
       </div>
 
       {/* Interactive Controls Bar */}
-      <div className="card-base p-6 bg-white border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <Card className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
             Target Role
           </label>
           <select
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            className="input-field text-sm font-semibold py-2.5 px-3 bg-slate-50"
+            className="input-field text-xs sm:text-sm font-semibold cursor-pointer"
           >
             {Object.keys(roleBaseSalaries).map((r) => (
               <option key={r} value={r}>{r}</option>
@@ -125,13 +136,13 @@ export default function Results() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
             Experience Level
           </label>
           <select
             value={experienceLevel}
             onChange={(e) => setExperienceLevel(e.target.value)}
-            className="input-field text-sm font-semibold py-2.5 px-3 bg-slate-50"
+            className="input-field text-xs sm:text-sm font-semibold cursor-pointer"
           >
             <option value="entry">Entry-Level (0 - 2 years)</option>
             <option value="mid">Mid-Level (3 - 5 years)</option>
@@ -141,32 +152,32 @@ export default function Results() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-            Work Region / Market
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+            Indian Tech Hub / Work Format
           </label>
           <select
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="input-field text-sm font-semibold py-2.5 px-3 bg-slate-50"
+            className="input-field text-xs sm:text-sm font-semibold cursor-pointer"
           >
-            <option value="remote">US Remote / General Market</option>
-            <option value="sf_ny">High Cost Tier (SF Bay / NYC)</option>
-            <option value="eu">European Tech Hubs (UK / EU)</option>
-            <option value="apac">APAC / Global Emerging Hubs</option>
+            <option value="remote_in">All-India Remote</option>
+            <option value="bengaluru_hyd">Bengaluru / Hyderabad (Tier 1 Tech Hub)</option>
+            <option value="pune_ncr_mumbai">Pune / Delhi NCR / Mumbai</option>
+            <option value="tier2_in">Tier-2 Tech Hubs (Ahmedabad, Kochi, Jaipur)</option>
           </select>
         </div>
-      </div>
+      </Card>
 
       {/* Main Big Salary Showcase Card */}
-      <div className="card-base overflow-hidden bg-white border border-slate-200 shadow-md">
-        <div className="p-8 sm:p-10 text-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white relative overflow-hidden">
+      <Card className="overflow-hidden shadow-md">
+        <div className="p-8 sm:p-12 text-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
             <BarChart3 className="w-80 h-80 absolute -bottom-10 -right-10 text-white" />
           </div>
           
           <div className="relative z-10 space-y-2 max-w-xl mx-auto">
-            <span className="text-xs font-bold tracking-wider uppercase px-3 py-1 bg-white/10 rounded-full text-emerald-300">
-              Estimated Total Target Compensation
+            <span className="text-xs font-bold tracking-wider uppercase px-3 py-1 bg-white/10 rounded-full text-emerald-300 border border-white/15">
+              Estimated Total Target Base (INR)
             </span>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-100">
               {selectedRole}
@@ -174,80 +185,94 @@ export default function Results() {
           </div>
           
           <div className="flex items-center justify-center relative z-10 mt-6 mb-2">
-            <span className="text-3xl sm:text-5xl font-light text-emerald-400 mr-1">$</span>
+            <span className="text-3xl sm:text-5xl font-light text-emerald-400 mr-1.5">₹</span>
             <span className="text-5xl sm:text-7xl font-extrabold tracking-tight text-white">
-              {median.toLocaleString()}
+              {median.toLocaleString('en-IN')}
             </span>
           </div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-xl text-emerald-300 font-extrabold text-sm relative z-10 mb-2">
+            Equivalent to ~{formatLpa(median)}
+          </div>
           <p className="text-slate-300 text-xs sm:text-sm font-medium relative z-10">
-            Median Annual Base Salary (USD)
+            Median Annual Base Salary (INR) • {locationLabels[location] || 'All-India'}
           </p>
         </div>
         
         {/* Distribution Percentiles */}
-        <div className="bg-white p-6 sm:p-8 border-t border-slate-200">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center mb-6">
-            Compensation Percentile Bands
+        <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center mb-6">
+            Indian Market Compensation Percentile Bands
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl mx-auto text-center">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <span className="text-xs font-bold text-slate-500 block mb-1">25th Percentile (Entry)</span>
-              <span className="text-xl sm:text-2xl font-extrabold text-slate-800">
-                ${lowEnd.toLocaleString()}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto text-center">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">25th Percentile</span>
+              <span className="text-base sm:text-lg font-extrabold text-slate-800 dark:text-slate-200 block">
+                ₹{lowEnd.toLocaleString('en-IN')}
               </span>
+              <span className="text-xs font-semibold text-slate-400">{formatLpa(lowEnd)}</span>
             </div>
             
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 ring-2 ring-emerald-500/20">
-              <span className="text-xs font-bold text-emerald-700 block mb-1">50th (Median Benchmark)</span>
-              <span className="text-xl sm:text-2xl font-extrabold text-emerald-700">
-                ${median.toLocaleString()}
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 ring-2 ring-emerald-500/20">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 block mb-1">50th (Median)</span>
+              <span className="text-base sm:text-lg font-extrabold text-emerald-700 dark:text-emerald-300 block">
+                ₹{median.toLocaleString('en-IN')}
               </span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatLpa(median)}</span>
             </div>
             
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <span className="text-xs font-bold text-slate-500 block mb-1">75th+ (Top Performers)</span>
-              <span className="text-xl sm:text-2xl font-extrabold text-indigo-600">
-                ${highEnd.toLocaleString()}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">75th Percentile</span>
+              <span className="text-base sm:text-lg font-extrabold text-indigo-600 dark:text-indigo-400 block">
+                ₹{highEnd.toLocaleString('en-IN')}
               </span>
+              <span className="text-xs font-semibold text-indigo-500">{formatLpa(highEnd)}</span>
+            </div>
+
+            <div className="p-4 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800">
+              <span className="text-xs font-bold text-purple-700 dark:text-purple-300 block mb-1">90th+ (Top Tier)</span>
+              <span className="text-base sm:text-lg font-extrabold text-purple-600 dark:text-purple-400 block">
+                ₹{topTier.toLocaleString('en-IN')}
+              </span>
+              <span className="text-xs font-semibold text-purple-500">{formatLpa(topTier)}</span>
             </div>
           </div>
           
-          <div className="mt-8 flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl text-blue-900 text-xs sm:text-sm leading-relaxed">
-            <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="mt-8 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/60 rounded-2xl text-blue-900 dark:text-blue-200 text-xs sm:text-sm leading-relaxed">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
             <p>
-              Estimates are derived from verified engineering compensation surveys and job postings. Equity grants, sign-on bonuses, and performance incentives typically add an additional 15% – 35% on top of base compensation.
+              Estimates reflect gross CTC and fixed annual base compensation in Indian Rupees (INR / LPA). Annual bonuses, stock appreciation rights (ESOPs), and joining bonuses often add an additional 15% – 30% depending on funding stage and startup vs tier-1 MNC profile.
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Skill Value Multiplier */}
-      <div className="card-base p-6 bg-white border border-slate-200">
+      {/* Highest Yield Skills Section */}
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Highest-Yield Skills For Your Role</h3>
-            <p className="text-xs text-slate-500">Mastering these competencies yields the largest salary premium</p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Highest-Yield Skills For Your Role</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Mastering these competencies yields the highest compensation bump in the Indian market</p>
           </div>
-          <Sparkles className="w-5 h-5 text-amber-500" />
+          <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {skillPremiums.map((item, idx) => (
-            <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div key={idx} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-900 block">{item.skill}</span>
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">{item.skill}</span>
                 {item.inDemand && (
-                  <span className="text-[10px] font-semibold text-emerald-600 uppercase">High Market Urgency</span>
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">High Market Urgency</span>
                 )}
               </div>
-              <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+              <Badge variant="emerald" size="sm">
                 {item.bump}
-              </span>
+              </Badge>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

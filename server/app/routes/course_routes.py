@@ -30,7 +30,7 @@ class CourseResponse(BaseModel):
 def get_course_recommendations(current_user: User = Depends(get_current_user)):
     skills = []
     if current_user.extracted_skills:
-        skills = current_user.extracted_skills.split(",")
+        skills = [s.strip() for s in current_user.extracted_skills.split(",") if s.strip()]
         
     courses = predict_courses(skills)
     return {"courses": courses}

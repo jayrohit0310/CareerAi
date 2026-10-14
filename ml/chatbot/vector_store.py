@@ -30,13 +30,32 @@ def tfidf_similarity(text_a: str, text_b: str) -> float:
 class VectorStore:
     """
     Semantic Vector Store for CareerCraft AI.
-    Supports Google Gemini Embedding 001 with cached embeddings and keyword-similarity fallback.
+    Supports Google Gemini Embedding with persistent disk caching and high-speed fallback.
     """
     def __init__(self):
         self.documents: List[str] = []
         self.metadatas: List[Dict[str, Any]] = []
         self.embeddings: List[Optional[List[float]]] = []
+        self._disk_cache: Dict[str, List[float]] = {}
+        self.cache_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../storage/vector_cache.json"))
+        self._load_cache()
         self._initialized = False
+
+    def _load_cache(self):
+        if os.path.exists(self.cache_path):
+            try:
+                with open(self.cache_path, "r", encoding="utf-8") as f:
+                    self._disk_cache = json.load(f)
+            except Exception:
+                self._disk_cache = {}
+
+    def _save_cache(self):
+        try:
+            os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
+            with open(self.cache_path, "w", encoding="utf-8") as f:
+                json.dump(self._disk_cache, f)
+        except Exception:
+            pass
 
     def get_api_key(self) -> str:
         key = os.environ.get("GEMINI_API_KEY", "")
@@ -56,7 +75,11 @@ class VectorStore:
         return key
 
     def get_embedding(self, text: str) -> Optional[List[float]]:
-        """Generates 3072-dimensional embedding using gemini-embedding-001."""
+        """Generates 3072-dimensional embedding using gemini-embedding-001 with disk cache lookup."""
+        cache_key = text.strip()[:400]
+        if cache_key in self._disk_cache:
+            return self._disk_cache[cache_key]
+
         api_key = self.get_api_key()
         if not api_key or api_key == "your_gemini_api_key_here":
             return None
@@ -75,15 +98,22 @@ class VectorStore:
         try:
             with urllib.request.urlopen(req, context=ctx, timeout=8) as response:
                 result = json.loads(response.read().decode("utf-8"))
-                return result.get("embedding", {}).get("values")
-        except Exception as e:
-            # Fallback gracefully
+                values = result.get("embedding", {}).get("values")
+                if values:
+                    self._disk_cache[cache_key] = values
+                    self._save_cache()
+                    return values
+        except Exception:
             return None
+        return None
 
     def add_document(self, text: str, metadata: Optional[Dict[str, Any]] = None, compute_embedding: bool = False):
         self.documents.append(text)
         self.metadatas.append(metadata or {})
-        if compute_embedding:
+        cache_key = text.strip()[:400]
+        if cache_key in self._disk_cache:
+            self.embeddings.append(self._disk_cache[cache_key])
+        elif compute_embedding:
             emb = self.get_embedding(text)
             self.embeddings.append(emb)
         else:

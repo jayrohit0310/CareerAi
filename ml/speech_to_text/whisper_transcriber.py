@@ -1,32 +1,36 @@
 import os
-import google.generativeai as genai
+import warnings
+from ml.common.gemini_client import get_gemini_api_key
 
 def transcribe_audio(audio_file_path: str) -> str:
     """
-    Transcribes audio using Google Gemini 1.5 Flash or OpenAI Whisper,
+    Transcribes audio using Google Gemini Flash or OpenAI Whisper,
     with an intelligent fallback if offline or keys are not provided.
     """
     if not audio_file_path or not os.path.exists(audio_file_path):
         return ""
 
     # 1. Attempt transcription using Google Gemini
-    gemini_key = os.environ.get("GEMINI_API_KEY")
+    gemini_key = get_gemini_api_key()
     if gemini_key and gemini_key != "your_gemini_api_key_here":
         try:
-            genai.configure(api_key=gemini_key)
-            audio_file = genai.upload_file(path=audio_file_path)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            prompt = (
-                "You are an expert audio transcriber. Accurately transcribe the candidate's speech "
-                "in this audio recording word-for-word into English text. "
-                "Output ONLY the transcribed speech with no other prefix, introduction, or commentary."
-            )
-            response = model.generate_content([prompt, audio_file])
-            transcript = response.text.strip()
-            if transcript:
-                return transcript
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
+                audio_file = genai.upload_file(path=audio_file_path)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                prompt = (
+                    "You are an expert audio transcriber. Accurately transcribe the candidate's speech "
+                    "in this audio recording word-for-word into English text. "
+                    "Output ONLY the transcribed speech with no other prefix, introduction, or commentary."
+                )
+                response = model.generate_content([prompt, audio_file])
+                transcript = response.text.strip()
+                if transcript:
+                    return transcript
         except Exception as e:
-            print(f"Gemini audio transcription error: {e}")
+            print(f"Gemini audio transcription notice: {e}")
 
     # 2. Attempt transcription using OpenAI Whisper API
     openai_key = os.environ.get("OPENAI_API_KEY")
@@ -42,7 +46,7 @@ def transcribe_audio(audio_file_path: str) -> str:
                 if transcript_resp and transcript_resp.text:
                     return transcript_resp.text.strip()
         except Exception as e:
-            print(f"OpenAI whisper transcription error: {e}")
+            print(f"OpenAI whisper transcription notice: {e}")
 
     # 3. Attempt local whisper if installed
     try:
