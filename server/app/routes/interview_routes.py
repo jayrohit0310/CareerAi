@@ -2,7 +2,7 @@ import os
 import sys
 import uuid
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 
@@ -42,6 +42,14 @@ router = APIRouter(prefix="/interview", tags=["interview"])
 
 AUDIO_DIR = os.path.join(ROOT_DIR, "storage", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
+
+def to_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 
 
 # --- Request & Response Models ---
@@ -232,7 +240,7 @@ def start_interview(
         ]
 
     # Server-side authoritative timestamps
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=config.duration_minutes)
 
     # Save Session in DB
@@ -300,8 +308,9 @@ def get_session_state(
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found.")
 
-    now = datetime.utcnow()
-    remaining_seconds = max(0, int((session.expires_at - now).total_seconds()))
+    now = datetime.now(timezone.utc)
+    session_exp = to_utc(session.expires_at)
+    remaining_seconds = max(0, int((session_exp - now).total_seconds())) if session_exp else 0
 
     # Check if timer expired on server
     if remaining_seconds <= 0 and session.status == "in_progress":
@@ -369,9 +378,10 @@ def submit_interview_answer(
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found.")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     # Check if timer has expired
-    is_time_up = (now > session.expires_at)
+    session_exp = to_utc(session.expires_at)
+    is_time_up = (now > session_exp) if session_exp else False
     if is_time_up and session.status == "in_progress":
         session.status = "expired"
 
@@ -480,7 +490,8 @@ def submit_interview_answer(
     if is_completed:
         session.status = "completed" if not is_time_up else "expired"
         session.ended_at = now
-        time_spent = int((now - session.started_at).total_seconds())
+        session_started = to_utc(session.started_at) or now
+        time_spent = int((now - session_started).total_seconds())
         session.total_time_spent_seconds = time_spent
 
         all_qa = db.query(InterviewQA).filter(InterviewQA.session_id == session.id).all()
@@ -515,7 +526,8 @@ def submit_interview_answer(
             session.report_data = json.dumps(report_data)
         db.commit()
 
-    remaining_secs = max(0, int((session.expires_at - now).total_seconds()))
+    session_exp = to_utc(session.expires_at)
+    remaining_secs = max(0, int((session_exp - now).total_seconds())) if session_exp else 0
 
     return {
         "score": eval_result.get("score_10", 7.5),
@@ -551,10 +563,11 @@ def end_interview_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     session.status = "completed" if req.reason == "completed" else "terminated_early"
     session.ended_at = now
-    time_spent = int((now - session.started_at).total_seconds())
+    session_started = to_utc(session.started_at) or now
+    time_spent = int((now - session_started).total_seconds())
     session.total_time_spent_seconds = time_spent
 
     try:
@@ -819,3 +832,9 @@ async def transcribe_audio_endpoint(
         return {"transcript": transcript}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Audio transcription failed: {str(e)}")
+    finally:
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass

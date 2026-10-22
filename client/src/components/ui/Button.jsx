@@ -22,12 +22,13 @@ const Button = forwardRef(function Button(
   const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] select-none';
 
   const variantStyles = {
-    primary: 'bg-blue-600 hover:bg-blue-500 text-white shadow-xs focus-visible:ring-blue-600 dark:focus-visible:ring-offset-slate-900',
-    secondary: 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/70 shadow-2xs focus-visible:ring-slate-400',
-    outline: 'bg-transparent text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/80 focus-visible:ring-blue-500',
+    primary: 'bg-sky-600 hover:bg-sky-500 text-white shadow-xs focus-visible:ring-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400 dark:text-slate-950 font-semibold',
+    black: 'bg-slate-900 hover:bg-black text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-950 shadow-xs focus-visible:ring-slate-900 font-semibold',
+    secondary: 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-2xs focus-visible:ring-slate-400',
+    outline: 'bg-transparent text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-sky-50/40 dark:hover:bg-sky-950/20 hover:border-sky-300 dark:hover:border-sky-700 focus-visible:ring-sky-500',
     danger: 'bg-rose-600 hover:bg-rose-500 text-white shadow-xs focus-visible:ring-rose-600',
-    ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-slate-400',
-    success: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs focus-visible:ring-emerald-600',
+    ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 focus-visible:ring-slate-400',
+    success: 'bg-sky-600 hover:bg-sky-500 text-white shadow-xs focus-visible:ring-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400 dark:text-slate-950 font-semibold',
   };
 
   const sizeStyles = {

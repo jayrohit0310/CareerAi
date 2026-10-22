@@ -23,7 +23,6 @@ import {
   Activity,
   RefreshCw,
   Award,
-  History,
   AlertTriangle,
   Play
 } from 'lucide-react';
@@ -215,19 +214,19 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Top Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 p-7 sm:p-9 text-white shadow-xl">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-slate-950 dark:bg-[#0b0f19] border border-slate-800 p-7 sm:p-9 text-white shadow-xl">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-blue-200 border border-white/15">
-              <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-950/60 border border-sky-800/60 rounded-full text-xs font-semibold text-sky-300">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
               <span>AI Career Copilot Active</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Welcome back, {user?.email ? user.email.split('@')[0] : 'Engineer'}!
             </h1>
-            <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
               Your talent intelligence dashboard is synced. Upload an updated resume or adjust your prioritized skills below to unlock new role matches, mock questions, and benchmarked salaries.
             </p>
           </div>
@@ -235,10 +234,10 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <Button
               onClick={() => fileInputRef.current?.click()}
-              variant="secondary"
+              variant="primary"
               size="md"
               icon={UploadCloud}
-              className="bg-white text-blue-700 hover:bg-blue-50 shadow-md border-transparent"
+              className="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold shadow-md border-transparent"
             >
               Upload PDF Resume
             </Button>
@@ -247,7 +246,7 @@ export default function Dashboard() {
               variant="outline"
               size="md"
               icon={RefreshCw}
-              className="text-white border-white/20 hover:bg-white/10"
+              className="text-white border-slate-700 hover:bg-slate-800/80"
             >
               Try Sample Data
             </Button>
@@ -260,13 +259,13 @@ export default function Dashboard() {
         <Card hover className="p-5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Identified Skills</span>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
               <CheckCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">{skills.length}</div>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
+            <span className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center">
               +3 verified ↑
             </span>
           </div>
@@ -278,19 +277,19 @@ export default function Dashboard() {
         <Card hover className="p-5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Profile Match Score</span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
               <Target className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{readinessScore}%</div>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{readinessScore}%</div>
+            <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
               Strong
             </span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2.5 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-2 rounded-full transition-all duration-700" 
+              className="bg-sky-500 h-2 rounded-full transition-all duration-700" 
               style={{ width: `${readinessScore}%` }}
             />
           </div>
@@ -299,13 +298,13 @@ export default function Dashboard() {
         <Card hover className="p-5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Target Compensation</span>
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">₹24 LPA+</div>
-            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+            <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
               Top 20%
             </span>
           </div>
@@ -315,15 +314,15 @@ export default function Dashboard() {
         <Card hover className="p-5">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider">Interview Mastery</span>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
               <Mic className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100">
               {interviewAnalytics?.total_completed > 0 ? `${interviewAnalytics.average_score_10}/10` : 'Ready'}
             </div>
-            <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
+            <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
               {interviewAnalytics?.total_completed > 0 ? `${interviewAnalytics.total_completed} Done` : 'Configurable'}
             </span>
           </div>
@@ -527,28 +526,28 @@ export default function Dashboard() {
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">AI Career Pathway Evaluation</h2>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Real-time matching against high-demand industry profiles</p>
               </div>
-              <Badge variant="emerald" size="md" dot>
+              <Badge variant="blue" size="md" dot>
                 Market Verified
               </Badge>
             </div>
 
             {skills.length > 0 ? (
               <div className="space-y-5">
-                <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-blue-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/60 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Top Match Ready</span>
-                    <h3 className="text-emerald-950 dark:text-emerald-100 font-extrabold text-lg sm:text-xl">
+                    <span className="text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider">Top Match Ready</span>
+                    <h3 className="text-slate-900 dark:text-slate-100 font-extrabold text-lg sm:text-xl">
                       Senior Full-Stack & AI Systems Engineer
                     </h3>
-                    <p className="text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm leading-relaxed">
+                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
                       Your skill inventory shows a 94% compatibility with modern generative AI and cloud engineering architectures.
                     </p>
                   </div>
                   <Button 
                     onClick={() => navigate('/career-report')} 
-                    variant="success"
+                    variant="primary"
                     size="md"
-                    className="shrink-0"
+                    className="shrink-0 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold"
                     iconRight={ArrowRight}
                   >
                     View Matches
@@ -568,7 +567,7 @@ export default function Dashboard() {
                   </div>
                   <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-0.5">Recommended Next Step</span>
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400 truncate block">
+                    <span className="text-sm font-bold text-sky-600 dark:text-sky-400 truncate block">
                       Take Mock Interview
                     </span>
                   </div>
@@ -588,7 +587,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-purple-600" />
+                  <Award className="w-5 h-5 text-sky-500" />
                   Interview Preparation & Performance Mastery
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -600,7 +599,7 @@ export default function Dashboard() {
                 variant="primary"
                 size="sm"
                 iconRight={ArrowRight}
-                className="bg-purple-600 hover:bg-purple-500"
+                className="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold"
               >
                 Launch Simulator
               </Button>
@@ -610,38 +609,38 @@ export default function Dashboard() {
               <div className="space-y-5">
                 {/* 3 Difficulty Level Performance Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/60 text-xs">
-                    <span className="font-bold text-emerald-800 dark:text-emerald-200 block mb-1">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                       Beginner Tier
                     </span>
-                    <div className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">
+                    <div className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
                       {interviewAnalytics.difficulty_stats?.beginner?.avg_score || 0} / 10
                     </div>
-                    <span className="text-[10px] text-emerald-600">
+                    <span className="text-[10px] text-slate-500">
                       {interviewAnalytics.difficulty_stats?.beginner?.count || 0} sessions completed
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900/60 text-xs">
-                    <span className="font-bold text-blue-800 dark:text-blue-200 block mb-1">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                       Intermediate Tier
                     </span>
-                    <div className="text-xl font-extrabold text-blue-700 dark:text-blue-300">
+                    <div className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
                       {interviewAnalytics.difficulty_stats?.intermediate?.avg_score || 0} / 10
                     </div>
-                    <span className="text-[10px] text-blue-600">
+                    <span className="text-[10px] text-slate-500">
                       {interviewAnalytics.difficulty_stats?.intermediate?.count || 0} sessions completed
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-100 dark:border-purple-900/60 text-xs">
-                    <span className="font-bold text-purple-800 dark:text-purple-200 block mb-1">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                       Advanced Tier
                     </span>
-                    <div className="text-xl font-extrabold text-purple-700 dark:text-purple-300">
+                    <div className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
                       {interviewAnalytics.difficulty_stats?.advanced?.avg_score || 0} / 10
                     </div>
-                    <span className="text-[10px] text-purple-600">
+                    <span className="text-[10px] text-slate-500">
                       {interviewAnalytics.difficulty_stats?.advanced?.count || 0} sessions completed
                     </span>
                   </div>
@@ -752,7 +751,7 @@ export default function Dashboard() {
               badge="Updated"
               description="Calculate your market value percentile across experience levels, tech hubs, and verified skills."
               onClick={() => navigate('/results')}
-              colorClass="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/60"
+              colorClass="bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/60"
             />
             <InteractiveActionCard 
               icon={<Mic className="w-6 h-6" />}
@@ -760,7 +759,7 @@ export default function Dashboard() {
               badge="Voice Practice"
               description="Rehearse real technical & behavioral questions with real-time speech dictation and STAR feedback."
               onClick={() => navigate('/interview')}
-              colorClass="bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/60"
+              colorClass="bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/60"
             />
             <InteractiveActionCard 
               icon={<BookOpen className="w-6 h-6" />}
@@ -768,7 +767,7 @@ export default function Dashboard() {
               badge="Upskilling"
               description="Discover hand-picked educational modules specifically aligned to close your detected skill gaps."
               onClick={() => navigate('/courses')}
-              colorClass="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/60"
+              colorClass="bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/60"
             />
             <InteractiveActionCard 
               icon={<Briefcase className="w-6 h-6" />}
@@ -776,7 +775,7 @@ export default function Dashboard() {
               badge="Active Postings"
               description="Explore vetted positions matching your exact skill profile, compensation target, and work type."
               onClick={() => navigate('/jobs')}
-              colorClass="bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/60"
+              colorClass="bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/60"
             />
           </div>
 
@@ -784,7 +783,7 @@ export default function Dashboard() {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <Activity className="w-4 h-4 text-sky-500" />
                 Recent System Activity
               </h3>
               <span className="text-xs text-slate-400">Real-time sync</span>
@@ -792,7 +791,7 @@ export default function Dashboard() {
 
             <div className="space-y-3">
               <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-sky-500 mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-slate-800 dark:text-slate-200">Resume parsed and evaluated</p>
                   <p className="text-slate-500 dark:text-slate-400 text-[11px]">Identified {skills.length} competencies ready for market matching.</p>
@@ -801,7 +800,7 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
-                <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-sky-400 mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-slate-800 dark:text-slate-200">AI Career Coach primed</p>
                   <p className="text-slate-500 dark:text-slate-400 text-[11px]">Contextual advisor available 24/7 for interview coaching.</p>
@@ -822,20 +821,20 @@ function InteractiveActionCard({ icon, title, badge, description, onClick, color
     <Card 
       hover 
       onClick={onClick}
-      className="p-6 flex flex-col cursor-pointer group hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-200"
+      className="p-6 flex flex-col cursor-pointer group hover:border-sky-400 dark:hover:border-sky-600 transition-all duration-200"
     >
       <div className="flex items-center justify-between mb-4">
         <div className={`p-3 rounded-2xl border ${colorClass} transition-transform group-hover:scale-105`}>
           {icon}
         </div>
         {badge && (
-          <Badge variant="slate" size="sm">
+          <Badge variant="blue" size="sm">
             {badge}
           </Badge>
         )}
       </div>
 
-      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+      <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
         {title}
       </h3>
 
@@ -843,7 +842,7 @@ function InteractiveActionCard({ icon, title, badge, description, onClick, color
         {description}
       </p>
 
-      <div className="flex items-center text-xs font-bold text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mt-auto">
+      <div className="flex items-center text-xs font-bold text-slate-400 dark:text-slate-500 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors mt-auto">
         Explore Tool <ArrowRight className="w-4 h-4 ml-1.5 transition-transform group-hover:translate-x-1" />
       </div>
     </Card>

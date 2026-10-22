@@ -206,7 +206,7 @@ VERIFIED_OPPORTUNITIES = [
         "company": "Internshala Tech Academy",
         "location": "Remote, India",
         "opportunity_type": "internship",
-        "salary": "₹25,000 - ₹35,00,0 / month",
+        "salary": "₹25,000 - ₹35,000 / month",
         "match_score": 88,
         "posted": "3 days ago",
         "skills": ["React", "JavaScript", "HTML/CSS", "Tailwind CSS"],

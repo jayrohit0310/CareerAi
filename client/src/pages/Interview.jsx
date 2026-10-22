@@ -22,7 +22,6 @@ import {
   Send, 
   MessageCircleQuestion, 
   Trophy, 
-  ShieldAlert, 
   RotateCcw, 
   Clock, 
   Mic, 
@@ -36,17 +35,14 @@ import {
   Volume2,
   VolumeX,
   Award,
-  Settings2,
   CheckCircle2,
   FileText,
   UploadCloud,
   History,
   Play,
   ArrowRight,
-  TrendingUp,
   BookOpen,
   Code2,
-  Briefcase,
   Users,
   Target,
   Edit3,
@@ -92,8 +88,8 @@ export default function Interview() {
 
   // Server-synchronized Timer state
   const [remainingSeconds, setRemainingSeconds] = useState(900);
-  const [isTimeWarning, setIsTimeWarning] = useState(false);
   const timerIntervalRef = useRef(null);
+  const handleAutoExpireRef = useRef(null);
 
   // Modals state
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
@@ -170,16 +166,13 @@ export default function Interview() {
 
   // 3. Authoritative Timer Effect
   useEffect(() => {
-    if (sessionStage === 'interviewing' && remainingSeconds > 0) {
+    if (sessionStage === 'interviewing') {
       timerIntervalRef.current = setInterval(() => {
         setRemainingSeconds(prev => {
           if (prev <= 1) {
             clearInterval(timerIntervalRef.current);
-            handleAutoExpire();
+            handleAutoExpireRef.current?.();
             return 0;
-          }
-          if (prev <= 61 && !isTimeWarning) {
-            setIsTimeWarning(true);
           }
           return prev - 1;
         });
@@ -188,7 +181,7 @@ export default function Interview() {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [sessionStage, remainingSeconds, isTimeWarning]);
+  }, [sessionStage]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -295,8 +288,23 @@ export default function Interview() {
     }
   };
 
+  // Load report and transition
+  const loadReportAndFinish = useCallback(async (sId) => {
+    setIsLoadingReport(true);
+    setSessionStage('report');
+    try {
+      const rep = await getInterviewReport(sId);
+      setReportData(rep);
+    } catch (err) {
+      console.error('Failed to load performance report:', err);
+      toast.error('Failed to load full report. Showing session summary.', 'Report Error');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  }, [toast]);
+
   // Timer auto expiration
-  const handleAutoExpire = async () => {
+  const handleAutoExpire = useCallback(async () => {
     toast.warning('Time has expired! Finalizing all interview responses.', 'Time Up');
     try {
       const res = await endInterviewSession(sessionId, 'timeout');
@@ -309,7 +317,11 @@ export default function Interview() {
     } catch {
       loadReportAndFinish(sessionId);
     }
-  };
+  }, [sessionId, toast, loadReportAndFinish]);
+
+  useEffect(() => {
+    handleAutoExpireRef.current = handleAutoExpire;
+  }, [handleAutoExpire]);
 
   // End Interview Early
   const handleEndEarly = async () => {
@@ -332,21 +344,6 @@ export default function Interview() {
     }
   };
 
-  // Load report and transition
-  const loadReportAndFinish = async (sId) => {
-    setIsLoadingReport(true);
-    setSessionStage('report');
-    try {
-      const rep = await getInterviewReport(sId);
-      setReportData(rep);
-    } catch (err) {
-      console.error('Failed to load performance report:', err);
-      toast.error('Failed to load full report. Showing session summary.', 'Report Error');
-    } finally {
-      setIsLoadingReport(false);
-    }
-  };
-
   // View specific past report from History
   const handleViewPastReport = async (pastSessionId) => {
     setIsLoadingReport(true);
@@ -356,6 +353,7 @@ export default function Interview() {
       const rep = await getInterviewReport(pastSessionId);
       setReportData(rep);
     } catch (err) {
+      console.error('Could not load past report:', err);
       toast.error('Could not load past report.', 'Error');
     } finally {
       setIsLoadingReport(false);
@@ -420,6 +418,7 @@ export default function Interview() {
       }
       await audioRecorderRef.current.start();
       setIsRecording(true);
+      setRecordingError(null);
       setRecordingSeconds(0);
       toast.info('Microphone recording started. Speak your answer now.', 'Voice Recording');
 
@@ -458,6 +457,7 @@ export default function Interview() {
               toast.success('Audio transcribed successfully!', 'Transcribed');
             }
           } catch (transcribeErr) {
+            console.warn('Audio transcription error:', transcribeErr);
             setRecordingError('Could not transcribe audio automatically. You can edit your answer manually.');
           } finally {
             setIsTranscribing(false);
@@ -489,6 +489,7 @@ export default function Interview() {
         setConfig(prev => ({ ...prev, resume_id: res.resume_id }));
       }
     } catch (err) {
+      console.error('Resume upload error:', err);
       toast.error('Failed to parse resume document.', 'Upload Error');
     } finally {
       setIsUploadingResume(false);
@@ -517,6 +518,7 @@ export default function Interview() {
       setIsReviewResumeModalOpen(false);
       await fetchOptions();
     } catch (err) {
+      console.error('Resume update error:', err);
       toast.error('Failed to save resume updates.', 'Save Error');
     } finally {
       setIsSavingResumeEdit(false);
@@ -611,7 +613,13 @@ export default function Interview() {
                         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
                           1. Interview Type
                         </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Select the evaluation style</p>
+                        {isLoadingOptions ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-medium">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Synchronizing options...
+                          </span>
+                        ) : (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Select the evaluation style</p>
+                        )}
                       </div>
                       <Badge variant="purple" size="sm">Core Focus</Badge>
                     </div>
@@ -1058,6 +1066,22 @@ export default function Interview() {
                     <span className="text-xs font-semibold text-purple-900 dark:text-purple-200">
                       Transcribing audio with Whisper AI...
                     </span>
+                  </div>
+                )}
+
+                {recordingError && (
+                  <div className="mb-4 p-3.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between gap-3 text-xs text-rose-700 dark:text-rose-300 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{recordingError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRecordingError(null)}
+                      className="font-bold underline hover:no-underline shrink-0"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 )}
 

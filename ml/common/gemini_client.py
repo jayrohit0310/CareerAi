@@ -28,7 +28,7 @@ def call_gemini_api(
     max_tokens: int = 1000
 ) -> str:
     """
-    Calls Gemini generateContent with fallback models ('gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest').
+    Calls Gemini generateContent with fallback models (gemini-2.0-flash, gemini-1.5-flash, etc.).
     Uses HTTPS to guarantee cross-platform SSL stability on Windows.
     """
     api_key = get_gemini_api_key()
@@ -36,7 +36,13 @@ def call_gemini_api(
         return ""
 
     if models is None:
-        models = ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemini-flash-latest"]
+        models = [
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-pro-latest",
+        ]
 
     payload = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],

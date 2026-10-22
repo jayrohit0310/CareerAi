@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -14,7 +14,7 @@ class Resume(Base):
     extracted_skills = Column(Text, nullable=True)
     parsed_data = Column(Text, nullable=True)  # JSON text with projects, internships, experience, education, etc.
     is_primary = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     sessions = relationship("InterviewSession", back_populates="resume")
@@ -34,7 +34,7 @@ class InterviewSession(Base):
     allow_followups = Column(Boolean, default=True)
     
     status = Column(String(30), default="in_progress")  # in_progress, completed, terminated_early, expired
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=False)
     ended_at = Column(DateTime, nullable=True)
     total_time_spent_seconds = Column(Integer, default=0)
@@ -42,7 +42,7 @@ class InterviewSession(Base):
     overall_score = Column(Float, nullable=True)
     questions_data = Column(Text, nullable=True)  # JSON list of all generated questions and current index
     report_data = Column(Text, nullable=True)     # JSON structured performance report
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     resume = relationship("Resume", back_populates="sessions")

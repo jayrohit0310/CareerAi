@@ -100,6 +100,11 @@ export const getCareerMatches = async () => {
   return response.data;
 };
 
+export const getCareerReport = async () => {
+  const response = await api.get('/career/report');
+  return response.data;
+};
+
 export const getSalaryEstimate = async (role, experienceYears) => {
   const params = {};
   if (role) params.role = role;
@@ -188,9 +193,10 @@ export const updateResumeDetails = async (resumeId, updatedData) => {
   return response.data;
 };
 
-export const sendChatMessage = async (message) => {
+export const sendChatMessage = async (message, conversationHistory = []) => {
   const response = await api.post('/chatbot/message', {
-    message: message
+    message: message,
+    conversation_history: conversationHistory.slice(-6) // send last 6 turns for context
   });
   return response.data;
 };

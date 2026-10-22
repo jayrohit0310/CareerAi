@@ -18,6 +18,67 @@ import {
   Trash2
 } from 'lucide-react';
 
+/* ── Lightweight inline markdown renderer ── */
+function MarkdownMessage({ text }) {
+  // Convert markdown to JSX line by line
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // H3 heading
+    if (line.startsWith('### ')) {
+      elements.push(<h3 key={i} className="font-extrabold text-sm mt-3 mb-1 text-slate-900 dark:text-slate-100">{renderInline(line.slice(4))}</h3>);
+    }
+    // H2 heading
+    else if (line.startsWith('## ')) {
+      elements.push(<h2 key={i} className="font-extrabold text-base mt-3 mb-1 text-slate-900 dark:text-slate-100">{renderInline(line.slice(3))}</h2>);
+    }
+    // Bullet points
+    else if (line.match(/^[-*]\s/)) {
+      elements.push(<li key={i} className="ml-4 list-disc">{renderInline(line.slice(2))}</li>);
+    }
+    // Numbered list
+    else if (line.match(/^\d+\.\s/)) {
+      elements.push(<li key={i} className="ml-4 list-decimal">{renderInline(line.replace(/^\d+\.\s/, ''))}</li>);
+    }
+    // Horizontal rule
+    else if (line.trim() === '---') {
+      elements.push(<hr key={i} className="my-3 border-slate-200 dark:border-slate-600" />);
+    }
+    // Empty line
+    else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-1.5" />);
+    }
+    // Normal paragraph
+    else {
+      elements.push(<p key={i} className="leading-relaxed">{renderInline(line)}</p>);
+    }
+    i++;
+  }
+
+  return <div className="text-xs sm:text-sm space-y-0.5">{elements}</div>;
+}
+
+function renderInline(text) {
+  // Handles **bold**, *italic*, and `code`
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={i} className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono text-[11px]">{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
 export default function Chat() {
   const initialMessages = [
     { 
@@ -60,24 +121,17 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await sendChatMessage(textToSend);
-      const reply = response.reply || response.response || response.message || "Focus on quantifiable accomplishments, scalable architecture decisions, and demonstrable business impact.";
+      const response = await sendChatMessage(textToSend, messages);
+      const reply = response.reply || response.response || response.message || "I'm having a moment — please try again!";
       setMessages(prev => [...prev, { 
         role: 'ai', 
         text: reply, 
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
       }]);
     } catch {
-      // Intelligent fallback guidance
-      const fallbackResponses = [
-        "When tailoring your profile, highlight high-leverage metrics (e.g., 'Reduced p99 API latency by 42%', 'Led distributed system migration to Kubernetes'). In interviews, structure every story using the STAR framework: Situation, Task, Action, and measurable Result.",
-        "For salary negotiations: Never state your current compensation first. Research the market median using our Salary Estimator, highlight your specific architecture strengths, and ask for the upper quartile with confidence and enthusiasm.",
-        "To break into high-paying AI engineering roles: Build 2-3 production-grade end-to-end applications demonstrating LLM tool calling, vector databases, and resilient asynchronous backend microservices."
-      ];
-      const randomFallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       setMessages(prev => [...prev, { 
         role: 'ai', 
-        text: randomFallback, 
+        text: "I'm having trouble connecting right now. Please check your connection and try again in a moment.",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
       }]);
     } finally {
@@ -151,7 +205,10 @@ export default function Chat() {
                       : 'bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 rounded-tl-xs'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  {msg.role === 'ai' 
+                    ? <MarkdownMessage text={msg.text} />
+                    : <div className="whitespace-pre-wrap">{msg.text}</div>
+                  }
                   
                   {msg.role === 'ai' && (
                     <button

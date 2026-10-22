@@ -100,7 +100,7 @@ export default function Results() {
       {/* Top Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl shadow-2xs">
+          <div className="p-3 bg-sky-50 dark:bg-sky-950/60 text-sky-500 rounded-2xl shadow-2xs">
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
@@ -113,7 +113,7 @@ export default function Results() {
           </div>
         </div>
 
-        <Badge variant="emerald" size="md" dot>
+        <Badge variant="blue" size="md" dot>
           ₹ INR Market Baseline
         </Badge>
       </div>
@@ -170,13 +170,13 @@ export default function Results() {
 
       {/* Main Big Salary Showcase Card */}
       <Card className="overflow-hidden shadow-md">
-        <div className="p-8 sm:p-12 text-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+        <div className="p-8 sm:p-12 text-center bg-slate-950 dark:bg-black text-white relative overflow-hidden border-b border-slate-800">
+          <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
             <BarChart3 className="w-80 h-80 absolute -bottom-10 -right-10 text-white" />
           </div>
           
           <div className="relative z-10 space-y-2 max-w-xl mx-auto">
-            <span className="text-xs font-bold tracking-wider uppercase px-3 py-1 bg-white/10 rounded-full text-emerald-300 border border-white/15">
+            <span className="text-xs font-bold tracking-wider uppercase px-3 py-1 bg-sky-950/80 rounded-full text-sky-300 border border-sky-800/60">
               Estimated Total Target Base (INR)
             </span>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-100">
@@ -185,21 +185,21 @@ export default function Results() {
           </div>
           
           <div className="flex items-center justify-center relative z-10 mt-6 mb-2">
-            <span className="text-3xl sm:text-5xl font-light text-emerald-400 mr-1.5">₹</span>
+            <span className="text-3xl sm:text-5xl font-light text-sky-400 mr-1.5">₹</span>
             <span className="text-5xl sm:text-7xl font-extrabold tracking-tight text-white">
               {median.toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-400/30 rounded-xl text-emerald-300 font-extrabold text-sm relative z-10 mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/20 border border-sky-400/30 rounded-xl text-sky-300 font-extrabold text-sm relative z-10 mb-2">
             Equivalent to ~{formatLpa(median)}
           </div>
-          <p className="text-slate-300 text-xs sm:text-sm font-medium relative z-10">
+          <p className="text-slate-400 text-xs sm:text-sm font-medium relative z-10">
             Median Annual Base Salary (INR) • {locationLabels[location] || 'All-India'}
           </p>
         </div>
         
         {/* Distribution Percentiles */}
-        <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <div className="p-6 sm:p-8 bg-white dark:bg-slate-900">
           <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center mb-6">
             Indian Market Compensation Percentile Bands
           </h3>
@@ -213,33 +213,33 @@ export default function Results() {
               <span className="text-xs font-semibold text-slate-400">{formatLpa(lowEnd)}</span>
             </div>
             
-            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 ring-2 ring-emerald-500/20">
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 block mb-1">50th (Median)</span>
-              <span className="text-base sm:text-lg font-extrabold text-emerald-700 dark:text-emerald-300 block">
+            <div className="p-4 bg-sky-50 dark:bg-sky-950/40 rounded-2xl border border-sky-200 dark:border-sky-800 ring-2 ring-sky-500/20">
+              <span className="text-xs font-bold text-sky-700 dark:text-sky-300 block mb-1">50th (Median)</span>
+              <span className="text-base sm:text-lg font-extrabold text-sky-700 dark:text-sky-300 block">
                 ₹{median.toLocaleString('en-IN')}
               </span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatLpa(median)}</span>
+              <span className="text-xs font-bold text-sky-600 dark:text-sky-400">{formatLpa(median)}</span>
             </div>
             
             <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">75th Percentile</span>
-              <span className="text-base sm:text-lg font-extrabold text-indigo-600 dark:text-indigo-400 block">
+              <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 block">
                 ₹{highEnd.toLocaleString('en-IN')}
               </span>
-              <span className="text-xs font-semibold text-indigo-500">{formatLpa(highEnd)}</span>
+              <span className="text-xs font-semibold text-slate-500">{formatLpa(highEnd)}</span>
             </div>
 
-            <div className="p-4 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800">
-              <span className="text-xs font-bold text-purple-700 dark:text-purple-300 block mb-1">90th+ (Top Tier)</span>
-              <span className="text-base sm:text-lg font-extrabold text-purple-600 dark:text-purple-400 block">
+            <div className="p-4 bg-slate-900 text-white dark:bg-white dark:text-slate-950 rounded-2xl">
+              <span className="text-xs font-bold opacity-80 block mb-1">90th+ (Top Tier)</span>
+              <span className="text-base sm:text-lg font-extrabold block">
                 ₹{topTier.toLocaleString('en-IN')}
               </span>
-              <span className="text-xs font-semibold text-purple-500">{formatLpa(topTier)}</span>
+              <span className="text-xs font-semibold opacity-75">{formatLpa(topTier)}</span>
             </div>
           </div>
           
-          <div className="mt-8 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/60 rounded-2xl text-blue-900 dark:text-blue-200 text-xs sm:text-sm leading-relaxed">
-            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="mt-8 flex items-start gap-3 p-4 bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50 rounded-2xl text-sky-950 dark:text-sky-200 text-xs sm:text-sm leading-relaxed">
+            <Info className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
             <p>
               Estimates reflect gross CTC and fixed annual base compensation in Indian Rupees (INR / LPA). Annual bonuses, stock appreciation rights (ESOPs), and joining bonuses often add an additional 15% – 30% depending on funding stage and startup vs tier-1 MNC profile.
             </p>
@@ -254,7 +254,7 @@ export default function Results() {
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Highest-Yield Skills For Your Role</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Mastering these competencies yields the highest compensation bump in the Indian market</p>
           </div>
-          <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+          <Sparkles className="w-5 h-5 text-sky-500 shrink-0" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -263,10 +263,10 @@ export default function Results() {
               <div>
                 <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">{item.skill}</span>
                 {item.inDemand && (
-                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">High Market Urgency</span>
+                  <span className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 uppercase">High Market Urgency</span>
                 )}
               </div>
-              <Badge variant="emerald" size="sm">
+              <Badge variant="blue" size="sm">
                 {item.bump}
               </Badge>
             </div>

@@ -7,13 +7,13 @@ import PasswordInput from '../components/ui/PasswordInput';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import ThemeToggle from '../components/ui/ThemeToggle';
-import { 
-  TrendingUp, 
-  Mail, 
-  User, 
-  Sparkles, 
-  CheckCircle2, 
-  ShieldCheck, 
+import {
+  TrendingUp,
+  Mail,
+  User,
+  Sparkles,
+  CheckCircle2,
+  ShieldCheck,
   ArrowRight,
   Check,
   X
@@ -103,26 +103,26 @@ export default function Signup() {
       </div>
 
       {/* Left Column: SaaS Branding Hero */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-indigo-700 via-blue-800 to-slate-950 p-12 xl:p-16 flex-col justify-between overflow-hidden text-white">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-950 border-r border-slate-800 p-12 xl:p-16 flex-col justify-between overflow-hidden text-white">
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-sky-400/5 blur-3xl pointer-events-none" />
 
         {/* Branding header */}
         <div className="relative z-10">
           <Link to="/" className="inline-flex items-center gap-2.5 group">
-            <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform text-white">
+              <TrendingUp className="w-5 h-5" />
             </div>
             <span className="text-2xl font-bold tracking-tight text-white">
-              CareerCraft<span className="text-blue-300">AI</span>
+              CareerCraft<span className="text-sky-400">AI</span>
             </span>
           </Link>
         </div>
 
         {/* Center hero content */}
         <div className="relative z-10 space-y-8 my-auto max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-indigo-200 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-950/60 border border-sky-800/60 text-sky-300 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-sky-400" />
             <span>Join 10,000+ Modern Job Seekers</span>
           </div>
 
@@ -130,34 +130,34 @@ export default function Signup() {
             Build your competitive advantage in tech.
           </h1>
 
-          <p className="text-base xl:text-lg text-indigo-100/90 leading-relaxed font-normal">
+          <p className="text-base xl:text-lg text-slate-300 leading-relaxed font-normal">
             Get instant AI resume feedback, uncover verified high-growth roles, rehearse behavioral interviews, and unlock your true compensation ceiling.
           </p>
 
           <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-300 shrink-0">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/90 border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-300 shrink-0">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div className="text-xs">
                 <p className="font-bold text-white">100% Free Candidate Tier</p>
-                <p className="text-indigo-200">No credit card or payment commitment required</p>
+                <p className="text-slate-400">No credit card or payment commitment required</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-300 shrink-0">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/90 border border-slate-800">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-300 shrink-0">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="text-xs">
                 <p className="font-bold text-white">Privacy First Resume Storage</p>
-                <p className="text-indigo-200">Your documents and speech data remain private and secure</p>
+                <p className="text-slate-400">Your documents and speech data remain private and secure</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 pt-6 border-t border-white/15 flex items-center justify-between text-xs text-indigo-200">
+        <div className="relative z-10 pt-6 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
           <span>Enterprise-ready ML Models</span>
           <span>Zero Spam Guarantee</span>
         </div>
@@ -169,11 +169,11 @@ export default function Signup() {
           {/* Mobile branding header */}
           <div className="text-center lg:text-left">
             <Link to="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                <TrendingUp className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 bg-sky-500 rounded-xl flex items-center justify-center shadow-md text-white">
+                <TrendingUp className="w-5 h-5" />
               </div>
               <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                CareerCraft<span className="text-blue-600">AI</span>
+                CareerCraft<span className="text-sky-500">AI</span>
               </span>
             </Link>
 
@@ -231,17 +231,16 @@ export default function Signup() {
                     <span className="text-slate-500 dark:text-slate-400">Strength:</span>
                     <span className={strengthLabel.textColor}>{strengthLabel.text}</span>
                   </div>
-                  
+
                   {/* 4-segment progress bar */}
                   <div className="grid grid-cols-4 gap-1.5 h-1.5">
                     {[1, 2, 3, 4].map((step) => (
                       <div
                         key={step}
-                        className={`h-full rounded-full transition-colors duration-200 ${
-                          passwordScore >= step
+                        className={`h-full rounded-full transition-colors duration-200 ${passwordScore >= step
                             ? strengthLabel.color
                             : 'bg-slate-200 dark:bg-slate-800'
-                        }`}
+                          }`}
                       />
                     ))}
                   </div>
@@ -343,8 +342,8 @@ export default function Signup() {
           <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 text-center">
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
               Already have an account?{' '}
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 transition-colors"
               >
                 Sign in instead
@@ -387,3 +386,4 @@ export default function Signup() {
     </div>
   );
 }
+

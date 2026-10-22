@@ -1,6 +1,6 @@
 import json
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 def generate_interview_performance_report(
     session_config: Dict[str, Any],
@@ -131,5 +131,5 @@ def generate_interview_performance_report(
         "recommended_study_topics": list(recommended_study_topics)[:5],
         "question_reviews": qa_list,
         "historical_comparison": hist_comp,
-        "generated_at": datetime.utcnow().isoformat()
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }

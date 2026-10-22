@@ -21,28 +21,29 @@ def get_gemini_api_key() -> str:
             pass
     return key
 
-def call_gemini_generate(prompt: str, candidate_models: List[str] = None) -> str:
+def call_gemini_generate(prompt: str, temperature: float = 0.4) -> str:
     """
-    Calls Gemini generateContent using a resilient model cascade and HTTPS.
-    Avoids Windows SSL/gRPC certificate verification pitfalls.
+    Calls Gemini generateContent using a resilient model cascade.
+    Uses the same proven model names as the central gemini_client.
     """
     api_key = get_gemini_api_key()
     if not api_key or api_key == "your_gemini_api_key_here":
         return ""
 
-    if candidate_models is None:
-        candidate_models = ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemini-flash-latest"]
+    candidate_models = [
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+    ]
 
     payload = json.dumps({
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ],
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.3,
-            "topP": 0.9,
-            "maxOutputTokens": 800
+            "temperature": temperature,
+            "topP": 0.92,
+            "maxOutputTokens": 1024
         }
     }).encode("utf-8")
 
@@ -53,94 +54,169 @@ def call_gemini_generate(prompt: str, candidate_models: List[str] = None) -> str
     for model_name in candidate_models:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "CareerCraft-AI/1.0"
-            }
+            url, data=payload,
+            headers={"Content-Type": "application/json", "User-Agent": "CareerCraft-AI/2.0"}
         )
         try:
-            with urllib.request.urlopen(req, context=ctx, timeout=12) as response:
+            with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
                 result = json.loads(response.read().decode("utf-8"))
                 candidates = result.get("candidates", [])
                 if candidates:
                     parts = candidates[0].get("content", {}).get("parts", [])
                     if parts and "text" in parts[0]:
-                        return parts[0]["text"].strip()
-        except Exception as e:
-            # Try next model in the fallback cascade
+                        text = parts[0]["text"].strip()
+                        if text:
+                            return text
+        except Exception:
             continue
 
     return ""
 
-def generate_chat_response(message: str) -> str:
+
+def generate_chat_response(message: str, conversation_history: List[Dict] = None) -> str:
     """
-    High-accuracy RAG (Retrieval-Augmented Generation) pipeline for CareerCraft AI.
-    1. Retrieves top relevant domain knowledge documents from the semantic vector store.
-    2. Constructs a grounded context prompt for Gemini.
-    3. Returns a synthesized, factual, actionable career advisory response.
+    Conversational RAG pipeline for CareerCraft AI.
+    1. Retrieves relevant knowledge from the semantic vector store.
+    2. Constructs a focused, context-aware prompt — only using retrieved knowledge
+       when it is genuinely relevant to the user's question.
+    3. Maintains conversational tone without forcing templates into every reply.
     """
     if not message or not message.strip():
-        return "How can I assist your career development today? Ask about resumes, interviews, salaries, or role transitions."
+        return "How can I help you today? Ask me about interview prep, resume tips, salary negotiation, or career transitions."
 
-    # 1. Retrieval Phase
+    # 1. Retrieval Phase — find what's actually relevant
     retrieved_chunks = store.search(message, top_k=3)
-    
-    context_str = ""
-    for idx, item in enumerate(retrieved_chunks):
-        score = item.get("score", 0.0)
-        doc = item.get("document", "")
-        context_str += f"[Source {idx+1} (Relevance: {score:.2f})]: {doc}\n"
 
-    # 2. Augmentation & Prompt Engineering Phase
-    prompt = f"""You are CareerCraft AI, an elite Career Strategist, Technical Talent Advisor, and Interview Coach.
-You provide precise, actionable, and structured guidance to software engineers and tech professionals.
+    # Only include chunks with a meaningful relevance score
+    relevant_chunks = [c for c in retrieved_chunks if c.get("score", 0.0) >= 0.08]
 
-### VERIFIED CAREER KNOWLEDGE BASE:
-{context_str}
+    context_section = ""
+    if relevant_chunks:
+        context_section = "\n### RELEVANT KNOWLEDGE BASE CONTEXT:\n"
+        for idx, item in enumerate(relevant_chunks):
+            topic = item.get("metadata", {}).get("topic", "Career Insight")
+            doc = item.get("document", "")
+            context_section += f"**[{topic}]:** {doc}\n\n"
 
-### CANDIDATE INQUIRY:
+    # 2. Build a conversation-aware, non-prescriptive prompt
+    history_section = ""
+    if conversation_history:
+        history_section = "\n### RECENT CONVERSATION CONTEXT:\n"
+        for turn in conversation_history[-4:]:  # last 2 exchanges
+            role = "Candidate" if turn.get("role") == "user" else "CareerCraft AI"
+            history_section += f"**{role}:** {turn.get('text', '')}\n"
+
+    prompt = f"""You are CareerCraft AI, a friendly and highly knowledgeable career coach specialising in tech careers in India.
+
+Your personality:
+- Conversational, warm, and encouraging — not robotic or over-formal
+- Direct and specific — you answer exactly what was asked, not a generic template
+- You only mention frameworks like STAR or X-Y-Z when the user explicitly asks about resumes or interview answers
+- You use markdown formatting (bold, bullets, headers) to make responses readable
+- All salaries you mention are in Indian Rupees (₹) and LPA unless the user specifies otherwise
+{history_section}{context_section}
+### CANDIDATE'S MESSAGE:
 {message}
 
-### INSTRUCTIONS:
-- Answer the candidate's inquiry thoroughly and directly.
-- Ground your advice in the verified knowledge base provided above whenever relevant.
-- Use clear markdown formatting, bullet points, and bold text for readability.
-- If recommending interview strategies, refer to the STAR method (Situation, Task, Action, Result).
-- If discussing resumes, cite quantifiable metric formulas (X-Y-Z formula) and ATS keywords.
-- Keep the response encouraging, professional, and directly actionable without unnecessary preamble.
+### YOUR RESPONSE:
+Answer the candidate's specific question concisely and helpfully. 
+- If the question is a greeting or casual message, respond warmly and briefly.
+- If the question is about a specific topic, give targeted advice — do NOT pad the response with unrelated frameworks.
+- Use the knowledge base context ONLY if it is directly relevant to the question.
+- Keep responses focused and avoid unnecessary preamble like "Hello! I am CareerCraft AI...".
 """
 
-    # 3. Generation Phase via Gemini
-    ai_response = call_gemini_generate(prompt)
+    # 3. Generation Phase
+    ai_response = call_gemini_generate(prompt, temperature=0.4)
     if ai_response:
         return ai_response
 
-    # 4. Fallback Grounded Synthesis (If API is offline or key missing)
-    return fallback_grounded_response(message, retrieved_chunks)
+    # 4. Smart Fallback — topic-aware responses
+    return _smart_fallback(message, relevant_chunks)
 
-def fallback_grounded_response(message: str, retrieved_chunks: List[Dict[str, Any]]) -> str:
+
+def _smart_fallback(message: str, relevant_chunks: List[Dict]) -> str:
     """
-    Generates a coherent response directly from retrieved vector store knowledge
-    when external LLM APIs are unreachable.
+    Returns a focused, topic-aware fallback when the Gemini API is unavailable.
     """
-    if not retrieved_chunks or retrieved_chunks[0].get("score", 0.0) < 0.15:
+    msg_lower = message.lower()
+
+    # Greeting detection
+    greetings = ["hi", "hello", "hey", "good morning", "good evening", "what can you do", "help"]
+    if any(g in msg_lower for g in greetings):
         return (
-            f"Here is some strategic advice regarding your question: '{message}'.\n\n"
-            "- **Profile & Skills:** Make sure to keep your core competencies updated on your CareerCraft dashboard.\n"
-            "- **Target Roles:** Focus on building 2-3 end-to-end projects demonstrating your top skills.\n"
-            "- **Next Step:** You can run a mock interview or check our salary estimator to benchmark your experience level."
+            "Hey! I'm CareerCraft AI, your career coach. Here's what I can help you with:\n\n"
+            "- 📝 **Resume Review** — rewrite bullets, ATS optimisation, keyword alignment\n"
+            "- 🎯 **Interview Prep** — STAR answers, system design, technical rounds\n"
+            "- 💰 **Salary Negotiation** — market benchmarks in INR, counter-offer tactics\n"
+            "- 🚀 **Career Transitions** — roadmaps for switching roles or domains\n\n"
+            "What would you like help with today?"
         )
 
-    best_match = retrieved_chunks[0].get("document", "")
-    additional_insights = [chunk["document"] for chunk in retrieved_chunks[1:3] if chunk.get("score", 0.0) > 0.2]
+    # Salary / compensation
+    if any(kw in msg_lower for kw in ["salary", "ctc", "lpa", "compensation", "pay", "hike", "raise", "negotiate"]):
+        return (
+            "**Salary Negotiation Playbook:**\n\n"
+            "1. **Never anchor first** — Ask for the role's budget range before giving any number.\n"
+            "2. **Research market rates** — Use our Salary Estimator to find the ₹ median for your role and YoE.\n"
+            "3. **Target 10–15% above offer** — Present quantifiable impact (cost saved, latency reduced, users onboarded) as justification.\n"
+            "4. **Evaluate total CTC** — Base salary + bonus + ESOPs/RSUs + joining bonus + insurance all count.\n"
+            "5. **Multiple offers = leverage** — Having a competing offer is the strongest negotiation tool.\n\n"
+            "Would you like help calculating your market value or practising a negotiation script?"
+        )
 
-    response = f"### Career Advisory Insight\n\n{best_match}\n\n"
-    if additional_insights:
-        response += "**Key Takeaways & Strategy:**\n"
-        for insight in additional_insights:
-            response += f"- {insight}\n"
+    # Resume
+    if any(kw in msg_lower for kw in ["resume", "cv", "ats", "bullet", "experience"]):
+        return (
+            "**Resume Optimisation Tips:**\n\n"
+            "- **Use the X-Y-Z formula:** *'Accomplished [X], as measured by [Y], by doing [Z]'* — every bullet needs a metric.\n"
+            "- **ATS keywords:** Match exact terms from the job description (e.g., Python, Docker, REST API, CI/CD).\n"
+            "- **Standard headers:** Summary → Skills → Experience → Projects → Education.\n"
+            "- **Avoid:** multi-column layouts, tables, images — they break ATS parsers.\n\n"
+            "Share a bullet point and I'll help you rewrite it!"
+        )
 
-    response += "\n*Feel free to ask a follow-up question or test these concepts in our AI Mock Interview simulator!*"
-    return response
+    # Interview
+    if any(kw in msg_lower for kw in ["interview", "star", "behavioral", "technical", "coding", "system design"]):
+        return (
+            "**Interview Preparation Framework:**\n\n"
+            "**For Behavioural Rounds — STAR Method:**\n"
+            "- **S**ituation: Set the context (project scope, team size, business problem)\n"
+            "- **T**ask: Your specific responsibility and objective\n"
+            "- **A**ction: Exact technical decisions, tools, trade-offs you made\n"
+            "- **R**esult: Measurable impact (e.g., '40% latency reduction', '₹20L cost saving')\n\n"
+            "**For System Design Rounds:**\n"
+            "1. Clarify requirements and constraints (scale, latency, consistency)\n"
+            "2. Sketch high-level architecture before diving into components\n"
+            "3. Discuss trade-offs: SQL vs NoSQL, REST vs event-driven, caching strategies\n\n"
+            "Want to do a mock interview for a specific role?"
+        )
+
+    # Career switch / roadmap
+    if any(kw in msg_lower for kw in ["transition", "switch", "roadmap", "career change", "ml engineer", "ai engineer", "full stack"]):
+        return (
+            "**Career Transition Roadmap:**\n\n"
+            "The fastest path to a new role:\n"
+            "1. **Identify the skill gap** — Compare your current profile to 10 job descriptions for your target role.\n"
+            "2. **Build 2–3 portfolio projects** — End-to-end, deployed, GitHub-linked. Quality beats quantity.\n"
+            "3. **Upskill strategically** — Courses tab has curated learning paths for your target domain.\n"
+            "4. **Update your resume** — Reframe existing experience using target role keywords.\n"
+            "5. **Network actively** — LinkedIn outreach to engineers at target companies is highly effective.\n\n"
+            "Which domain are you transitioning to? I can give you a specific roadmap."
+        )
+
+    # Use best retrieved chunk if score is reasonable
+    if relevant_chunks and relevant_chunks[0].get("score", 0.0) >= 0.12:
+        best = relevant_chunks[0].get("document", "")
+        topic = relevant_chunks[0].get("metadata", {}).get("topic", "Career Insight")
+        return f"**{topic}**\n\n{best}\n\nFeel free to ask a follow-up question or start a mock interview!"
+
+    # Generic fallback
+    return (
+        "Great question! I can help you with:\n\n"
+        "- Interview preparation and mock practice\n"
+        "- Resume and ATS optimisation\n"
+        "- Salary benchmarking (₹ INR)\n"
+        "- Career roadmaps and role transitions\n\n"
+        "Could you give me a bit more context about what you're working on? That way I can give you the most targeted advice."
+    )
