@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import ThemeToggle from '../components/ui/ThemeToggle';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
@@ -117,105 +118,93 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-blue-100 selection:text-blue-700 transition-colors">
 
-      {/* Sticky Top Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#070b12]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 bg-sky-500 rounded-xl flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform text-white">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              CareerCraft<span className="text-sky-500">AI</span>
-            </span>
-          </Link>
+      {/* Floating Pill Navigation Bar (Matching Image 1) */}
+      <Navbar />
 
-          <nav className="hidden md:flex items-center gap-8 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400">
-            <a href="#features" className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Features</a>
-            <a href="#preview" className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">Interactive Demo</a>
-            <a href="#how-it-works" className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">How It Works</a>
-            <a href="#faq" className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">FAQ</a>
-          </nav>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-
-            {isAuthenticated ? (
-              <Button
-                onClick={() => window.location.href = '/dashboard'}
-                variant="primary"
-                size="sm"
-                icon={LayoutDashboard}
-              >
-                Dashboard
-              </Button>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/signup"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-slate-900 hover:bg-black dark:bg-sky-500 dark:hover:bg-sky-400 dark:text-slate-950 rounded-xl shadow-xs transition-all active:scale-[0.98]"
-                >
-                  Get Started <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28">
+      {/* Hero Section with Architectural Grid Pattern (Matching Image 1) */}
+      <section className="relative overflow-hidden pt-8 pb-20 lg:pt-14 lg:pb-28 bg-grid-pattern">
         {/* Subtle light ambient glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-sky-400/10 dark:bg-sky-500/5 blur-3xl pointer-events-none rounded-full" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[650px] h-[380px] bg-sky-400/12 dark:bg-sky-500/8 blur-3xl pointer-events-none rounded-full" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-50 dark:bg-sky-950/50 border border-sky-200/80 dark:border-sky-800/60 text-sky-800 dark:text-sky-300 text-xs sm:text-sm font-semibold animate-fade-in shadow-2xs">
-              <Sparkles className="w-4 h-4 text-sky-500" />
+            
+            {/* Pill Badge with Arrow (Matching Image 1) */}
+            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-medium shadow-2xs hover:border-sky-300 dark:hover:border-sky-700 transition-colors cursor-pointer group">
+              <span className="px-2 py-0.5 rounded-full bg-blue-600 text-[10px] font-bold text-white uppercase tracking-wider">
+                NEW
+              </span>
               <span>Next-Generation Career Intelligence Platform</span>
+              <ArrowRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 transition-transform group-hover:translate-x-1" />
             </div>
 
+            {/* Overline Subtitle */}
+            <div className="text-xs sm:text-sm font-bold tracking-widest uppercase text-sky-600 dark:text-sky-400">
+              YOUR AI CAREER &amp; JOB SEARCH COPILOT
+            </div>
+
+            {/* Main Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-[1.12]">
-              Accelerate your engineering career with <span className="text-sky-500 dark:text-sky-400">precision</span> clarity.
+              Accelerate your engineering career with <span className="text-sky-500 dark:text-sky-400">precision clarity</span>.
             </h1>
 
+            {/* Description */}
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto font-normal">
               Extract core competencies instantly, uncover market-aligned compensation, practice real-time AI voice mock interviews, and land high-yield roles.
             </p>
 
+            {/* Dark Pill CTA & Secondary Pill Button (Matching Image 1) */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
               <Link
                 to={isAuthenticated ? "/dashboard" : "/signup"}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-black dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-bold px-8 py-3.5 rounded-2xl shadow-md text-sm sm:text-base transition-all active:scale-[0.98]"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 font-bold px-9 py-3.5 rounded-full shadow-lg text-xs sm:text-sm uppercase tracking-wider transition-all active:scale-[0.98]"
               >
-                {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
+                {isAuthenticated ? "Go to Dashboard" : "TRY FOR FREE"}
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <a
                 href="#preview"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold px-7 py-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-2xs text-sm sm:text-base transition-all active:scale-[0.98]"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold px-7 py-3.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-2xs text-xs sm:text-sm transition-all active:scale-[0.98]"
               >
                 View Live Preview
               </a>
             </div>
 
-            {/* Proof Trust Badges */}
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            {/* Microcopy below CTA (Matching Image 1) */}
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+              Free to start. No initial payment or credit card required.
+            </p>
+
+            {/* Social Proof Row with Ratings (Matching Image 1) */}
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-semibold border-t border-slate-200/80 dark:border-slate-800/80 mt-6 max-w-2xl mx-auto">
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-sky-500 shrink-0" />
+                <span className="text-amber-400 text-sm">★</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">4.9</span>
+                <span className="text-slate-500 font-normal">Platform rating</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-900 dark:text-slate-100">500K+</span>
+                <span className="text-slate-500 font-normal">job seekers on CareerCraft</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-sky-500" />
+                <span className="font-bold text-slate-900 dark:text-slate-100">AI Product</span>
+                <span className="text-slate-500 font-normal">· Featured Platform</span>
+              </div>
+            </div>
+
+            {/* Proof Trust Badges */}
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 <span>Instant PDF Parsing</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-sky-500 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 <span>Real-Time Voice Mock Interviews</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-sky-500 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 <span>No Credit Card Required</span>
               </div>
             </div>
@@ -531,28 +520,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-10 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-sky-500 rounded-xl flex items-center justify-center text-white shadow-xs">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <span className="text-base font-bold text-slate-900 dark:text-slate-100">CareerCraft<span className="text-sky-500">AI</span></span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-semibold">
-            <Link to="/" className="hover:text-sky-600 transition-colors">Home</Link>
-            <Link to="/login" className="hover:text-sky-600 transition-colors">Sign In</Link>
-            <Link to="/signup" className="hover:text-sky-600 transition-colors">Sign Up</Link>
-            <Link to="/dashboard" className="hover:text-sky-600 transition-colors">Dashboard</Link>
-          </div>
-
-          <p className="text-xs text-slate-400">
-            &copy; {new Date().getFullYear()} CareerCraft AI. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      {/* Comprehensive Modern Footer (Matching Image 2) */}
+      <Footer />
     </div>
   );
 }

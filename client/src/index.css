@@ -52,6 +52,19 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .bg-grid-pattern {
+    background-size: 48px 48px;
+    background-image: 
+      linear-gradient(to right, rgba(226, 232, 240, 0.7) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(226, 232, 240, 0.7) 1px, transparent 1px);
+  }
+
+  .dark .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+  }
 }
 
 /* Animations */
