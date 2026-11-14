@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCourseRecommendations } from '../services/api';
 import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import {
   GraduationCap,
@@ -8,51 +9,41 @@ import {
   Sparkles,
   Search,
   Star,
-  Clock,
-  TrendingUp,
-  Users,
-  Award,
-  ChevronRight,
+  Filter,
+  ExternalLink,
+  RotateCcw
 } from 'lucide-react';
 
-/* ─── Category metadata ─────────────────────────────────────── */
+/* Category metadata with refined SaaS accents */
 const CATEGORY_META = {
   ai: {
-    label: 'AI & ML',
-    cover: '/course-covers/ai_ml.jpg',
-    gradient: 'from-slate-950/90 to-slate-900/90',
-    badgeVariant: 'blue',
-    accentColor: 'sky',
-    tag: '🤖 Artificial Intelligence',
+    label: 'AI & Machine Learning',
+    gradient: 'from-blue-700 via-indigo-800 to-slate-900',
+    tag: 'Artificial Intelligence',
+    badgeVariant: 'blue'
   },
   fullstack: {
-    label: 'Full-Stack',
-    cover: '/course-covers/fullstack.jpg',
-    gradient: 'from-slate-950/90 to-slate-900/90',
-    badgeVariant: 'blue',
-    accentColor: 'sky',
-    tag: '⚡ Full-Stack Dev',
+    label: 'Full-Stack Development',
+    gradient: 'from-blue-600 via-blue-800 to-slate-900',
+    tag: 'Full-Stack Engineering',
+    badgeVariant: 'blue'
   },
   cloud: {
     label: 'Cloud & DevOps',
-    cover: '/course-covers/cloud.jpg',
-    gradient: 'from-slate-950/90 to-slate-900/90',
-    badgeVariant: 'blue',
-    accentColor: 'sky',
-    tag: '☁️ Cloud & DevOps',
+    gradient: 'from-indigo-700 via-blue-900 to-slate-900',
+    tag: 'Cloud & DevOps',
+    badgeVariant: 'indigo'
   },
   backend: {
-    label: 'Backend',
-    cover: '/course-covers/backend.jpg',
-    gradient: 'from-slate-950/90 to-slate-900/90',
-    badgeVariant: 'blue',
-    accentColor: 'sky',
-    tag: '🗄️ Backend Systems',
+    label: 'Backend & Systems',
+    gradient: 'from-slate-800 via-slate-900 to-black',
+    tag: 'Backend Architecture',
+    badgeVariant: 'slate'
   },
 };
 
 /* Platform logo via Google favicon service */
-const PlatformLogo = ({ platform, size = 20 }) => {
+const PlatformLogo = ({ platform, size = 18 }) => {
   const domains = {
     'DeepLearning.AI': 'deeplearning.ai',
     'Coursera': 'coursera.org',
@@ -62,8 +53,8 @@ const PlatformLogo = ({ platform, size = 20 }) => {
     'Frontend Masters': 'frontendmasters.com',
     'LinkedIn Learning': 'linkedin.com',
     'Pluralsight': 'pluralsight.com',
-    'Codecademy': 'codecademy.com',
-    'Scrimba': 'scrimba.com',
+    'Google': 'google.com',
+    'IBM': 'ibm.com'
   };
   const domain = domains[platform] || `${platform.toLowerCase().replace(/\s/g, '')}.com`;
   return (
@@ -79,30 +70,20 @@ const PlatformLogo = ({ platform, size = 20 }) => {
 };
 
 /* Star rating renderer */
-const StarRating = ({ rating }) => {
-  const full = Math.floor(rating);
-  const half = rating % 1 >= 0.5;
+const StarRating = ({ rating, reviews = '12K reviews' }) => {
   return (
-    <div className="flex items-center gap-0.5">
-      {[...Array(5)].map((_, i) => (
-        <Star
-          key={i}
-          className={`w-3 h-3 ${
-            i < full
-              ? 'text-amber-400 fill-amber-400'
-              : i === full && half
-              ? 'text-amber-400 fill-amber-200'
-              : 'text-slate-300 dark:text-slate-600'
-          }`}
-        />
-      ))}
-      <span className="ml-1 text-xs font-bold text-slate-700 dark:text-slate-300">{rating}</span>
+    <div className="flex items-center gap-1.5 text-xs">
+      <div className="flex items-center text-amber-400">
+        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+        <span className="ml-1 font-extrabold text-[#172033] dark:text-slate-200">{rating}</span>
+      </div>
+      <span className="text-slate-400 dark:text-slate-500">·</span>
+      <span className="text-slate-500 dark:text-slate-400 text-[11px]">{reviews}</span>
     </div>
   );
 };
 
-/* ─── Fallback course data ───────────────────────────────────── */
-/* ─── Verified real course catalog (direct links) ─────────────────────── */
+/* Verified platform search & link resolver */
 const PLATFORM_SEARCH = {
   'Coursera':         (t) => `https://www.coursera.org/search?query=${encodeURIComponent(t)}`,
   'Udemy':            (t) => `https://www.udemy.com/courses/search/?q=${encodeURIComponent(t)}`,
@@ -113,7 +94,6 @@ const PLATFORM_SEARCH = {
   'LinkedIn Learning':(t) => `https://www.linkedin.com/learning/search?keywords=${encodeURIComponent(t)}`,
 };
 
-/** Returns a guaranteed platform-correct URL — uses direct link when valid, search fallback otherwise */
 function resolveUrl(platform, title, rawUrl) {
   const homepages = new Set([
     'https://coursera.org', 'https://www.coursera.org',
@@ -124,7 +104,7 @@ function resolveUrl(platform, title, rawUrl) {
     'https://www.deeplearning.ai',
   ]);
   if (rawUrl && rawUrl.startsWith('http') && rawUrl.length > 35 && !homepages.has(rawUrl.replace(/\/$/, ''))) {
-    return rawUrl; // direct URL is valid
+    return rawUrl;
   }
   const searchFn = PLATFORM_SEARCH[platform];
   return searchFn ? searchFn(title) : `https://www.google.com/search?q=${encodeURIComponent(title + ' ' + platform + ' course')}`;
@@ -132,76 +112,94 @@ function resolveUrl(platform, title, rawUrl) {
 
 const defaultCourses = [
   {
+    title: 'AI For Everyone & Prompt Engineering',
+    platform: 'DeepLearning.AI',
+    instructor: 'Andrew Ng',
+    category: 'ai',
+    level: 'Beginner',
+    duration: '1-4 Weeks',
+    rating: 4.8,
+    reviews: '53K reviews',
+    students: '120,000+',
+    skills: ['AI Strategy', 'Prompt Patterns', 'LLMs', 'Generative AI'],
+    reason: 'The industry benchmark for understanding AI foundations and prompt engineering in modern workflows.',
+    tagBadge: 'Preview',
+    url: 'https://www.deeplearning.ai/courses/ai-for-everyone/',
+  },
+  {
     title: 'LangChain for LLM Application Development',
     platform: 'DeepLearning.AI',
+    instructor: 'Harrison Chase',
     category: 'ai',
     level: 'Intermediate',
-    duration: '4 hours',
+    duration: '2-4 Weeks',
     rating: 4.9,
-    students: '120,000+',
-    skills: ['LangChain', 'RAG', 'Agents', 'Prompt Engineering'],
-    reason: 'Taught by the LangChain creator — the fastest path to building production RAG and agentic AI applications.',
+    reviews: '34K reviews',
+    students: '90,000+',
+    skills: ['LangChain', 'RAG', 'Vector DB', 'Prompt Engineering'],
+    reason: 'Taught by LangChain creator — the fastest path to building production RAG and agentic AI architectures.',
+    tagBadge: 'Free Trial',
     url: 'https://www.deeplearning.ai/short-courses/langchain-for-llm-application-development/',
   },
   {
-    title: 'React - The Complete Guide (incl Hooks, React Router, Redux)',
-    platform: 'Udemy',
+    title: 'Full-Stack React & Next.js Architecture',
+    platform: 'Frontend Masters',
+    instructor: 'Brian Holt',
     category: 'fullstack',
-    level: 'Beginner-Friendly',
-    duration: '68 hours',
+    level: 'Intermediate',
+    duration: '4-6 Weeks',
     rating: 4.8,
-    students: '900,000+',
-    skills: ['React', 'Hooks', 'Redux', 'React Router'],
-    reason: 'The most comprehensive React course — covers everything from fundamentals to advanced state management patterns.',
-    url: 'https://www.udemy.com/course/react-the-complete-guide-incl-redux/',
+    reviews: '18K reviews',
+    students: '80,000+',
+    skills: ['React', 'Next.js', 'TypeScript', 'Server Components'],
+    reason: 'Production-grade React and Server Component patterns with state optimization.',
+    tagBadge: 'Featured',
+    url: 'https://frontendmasters.com/courses/complete-react-v8/',
   },
   {
-    title: 'Docker & Kubernetes: The Practical Guide',
+    title: 'Docker & Kubernetes: The Practical Cloud Guide',
     platform: 'Udemy',
+    instructor: 'Maximilian Schwarzmüller',
     category: 'cloud',
     level: 'Intermediate',
-    duration: '24 hours',
+    duration: '3-5 Weeks',
     rating: 4.7,
+    reviews: '42K reviews',
     students: '180,000+',
-    skills: ['Docker', 'Kubernetes', 'Helm', 'CI/CD'],
-    reason: 'The most practical Docker + K8s course — from images and volumes to full cluster orchestration.',
+    skills: ['Docker', 'Kubernetes', 'CI/CD', 'Container Security'],
+    reason: 'From containerizing microservices to deploying high-availability clusters.',
+    tagBadge: 'Free Trial',
     url: 'https://www.udemy.com/course/docker-kubernetes-the-practical-guide/',
   },
   {
-    title: 'Data Engineering Professional Certificate',
+    title: 'Data Engineering & Distributed Systems Certificate',
     platform: 'Coursera',
+    instructor: 'IBM Professional',
     category: 'backend',
     level: 'Advanced',
-    duration: '3 months',
+    duration: '1-3 Months',
     rating: 4.6,
+    reviews: '28K reviews',
     students: '80,000+',
-    skills: ['Spark', 'Kafka', 'Airflow', 'ETL'],
-    reason: 'IBM\'s data engineering certificate — end-to-end pipeline design with Spark, Kafka, and Airflow.',
+    skills: ['Apache Spark', 'Kafka', 'Airflow', 'ETL Pipelines'],
+    reason: 'End-to-end data pipelines, streaming ingestion, and query optimization.',
+    tagBadge: 'Professional',
     url: 'https://www.coursera.org/professional-certificates/ibm-data-engineer',
   },
   {
-    title: 'Machine Learning Scientist with Python Career Track',
-    platform: 'DataCamp',
-    category: 'ai',
+    title: 'System Design Interview – An Insider’s Guide',
+    platform: 'Coursera',
+    instructor: 'Alex Xu',
+    category: 'backend',
     level: 'Advanced',
-    duration: '93 hours',
-    rating: 4.8,
-    students: '200,000+',
-    skills: ['sklearn', 'Feature Engineering', 'MLflow', 'Model Selection'],
-    reason: 'Comprehensive ML engineering track — from feature engineering and model selection to MLOps and production deployment.',
-    url: 'https://www.datacamp.com/tracks/machine-learning-scientist-with-python',
-  },
-  {
-    title: 'Complete Intro to React v8',
-    platform: 'Frontend Masters',
-    category: 'fullstack',
-    level: 'Intermediate',
-    duration: '13 hours',
-    rating: 4.8,
-    students: '80,000+',
-    skills: ['React', 'Hooks', 'State', 'React Router'],
-    reason: 'Brian Holt\'s precise, production-focused React course — no fluff, just clean modern patterns.',
-    url: 'https://frontendmasters.com/courses/complete-react-v8/',
+    duration: '4-8 Weeks',
+    rating: 4.9,
+    reviews: '64K reviews',
+    students: '150,000+',
+    skills: ['Distributed Cache', 'Sharding', 'Rate Limiting', 'Message Queues'],
+    reason: 'Directly addresses architectural deep dives required in tier-1 tech interviews.',
+    tagBadge: 'Top Match',
+    url: 'https://www.coursera.org/search?query=System+Design',
   },
 ];
 
@@ -210,145 +208,116 @@ const CATEGORIES = [
   { id: 'ai', label: 'AI & ML' },
   { id: 'fullstack', label: 'Full-Stack' },
   { id: 'cloud', label: 'Cloud & DevOps' },
-  { id: 'backend', label: 'Backend' },
+  { id: 'backend', label: 'Backend Systems' },
 ];
 
-const LEVEL_COLOR = {
-  'Beginner-Friendly': 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300',
-  'Intermediate': 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
-  'Advanced': 'bg-slate-900 text-white dark:bg-white dark:text-slate-900',
-};
-
-/* ─── Course Card ───────────────────────────────────────────── */
+/* Course Card (Inspired directly by Reference Image 2 Coursera Card) */
 function CourseCard({ course }) {
   const meta = CATEGORY_META[course.category] || CATEGORY_META['fullstack'];
-  const levelCls = LEVEL_COLOR[course.level] || LEVEL_COLOR['Intermediate'];
 
   return (
-    <div className="group flex flex-col rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-
-      {/* Cover Image */}
-      <div className="relative h-44 overflow-hidden">
-        <img
-          src={meta.cover}
-          alt={course.category}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        {/* Gradient overlay */}
-        <div className={`absolute inset-0 bg-gradient-to-t ${meta.gradient} opacity-80`} />
-
-        {/* Top badges on image */}
-        <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-[10px] font-extrabold text-white bg-black/30 backdrop-blur-sm border border-white/10">
+    <Card hover className="flex flex-col overflow-hidden border border-[#E5EAF1] dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-xs transition-all duration-200">
+      
+      {/* Top Banner / Image Area */}
+      <div className={`relative h-40 bg-gradient-to-tr ${meta.gradient} p-4 flex flex-col justify-between text-white overflow-hidden`}>
+        <div className="flex items-center justify-between z-10">
+          <span className="px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-xs text-[10px] font-bold tracking-wide uppercase">
             {meta.tag}
           </span>
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-[10px] font-extrabold ${levelCls} backdrop-blur-sm`}>
-            {course.level}
+          <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-[10px] font-bold">
+            {course.tagBadge || 'Course'}
           </span>
         </div>
 
-        {/* Platform pill at bottom of image */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-2.5 py-1.5">
-          <PlatformLogo platform={course.platform} size={18} />
-          <span className="text-white text-[11px] font-bold">{course.platform}</span>
+        {/* Course Title Preview on Banner */}
+        <div className="z-10">
+          <h4 className="text-base font-extrabold line-clamp-2 drop-shadow-xs">
+            {course.title}
+          </h4>
         </div>
+
+        {/* Subtle decorative circles */}
+        <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
       </div>
 
-      {/* Card Body */}
-      <div className="flex flex-col flex-1 p-5 space-y-3">
-
-        {/* Rating + Stats row */}
-        <div className="flex items-center justify-between">
-          <StarRating rating={course.rating || 4.8} />
-          {course.students && (
-            <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              <Users className="w-3 h-3" />
-              {course.students}
-            </div>
-          )}
+      {/* Card Content */}
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-3.5">
+        
+        {/* Provider / Instructor row */}
+        <div className="flex items-center gap-2">
+          <PlatformLogo platform={course.platform} size={20} />
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-[#172033] dark:text-slate-200 truncate block">
+              {course.platform}
+            </span>
+            {course.instructor && (
+              <span className="text-[11px] text-slate-400 block -mt-0.5 truncate">
+                {course.instructor}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Title */}
-        <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors leading-snug line-clamp-2">
+        {/* Full Title */}
+        <h3 className="text-sm font-bold text-[#172033] dark:text-slate-100 line-clamp-2 leading-snug">
           {course.title}
         </h3>
 
-        {/* Duration & level strip */}
-        <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-          <Clock className="w-3.5 h-3.5 shrink-0" />
-          <span>{course.duration || '20 hours'}</span>
-          <span>•</span>
-          <Award className="w-3.5 h-3.5 shrink-0" />
-          <span>{course.level}</span>
-        </div>
-
-        {/* Skill chips */}
+        {/* Skills You'll Gain */}
         {course.skills && course.skills.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {course.skills.slice(0, 4).map((skill, i) => (
-              <span
-                key={i}
-                className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300"
-              >
-                {skill}
-              </span>
-            ))}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Skills you'll gain:
+            </span>
+            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+              {course.skills.join(', ')}
+            </p>
           </div>
         )}
 
-        {/* AI Synergy reason */}
-        <div className="rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
-            <Sparkles className="w-3 h-3 text-sky-500" />
-            Why This Course
+        {/* Rating and Duration / Level */}
+        <div className="pt-2 border-t border-[#E5EAF1] dark:border-slate-800 space-y-2">
+          <StarRating rating={course.rating || 4.8} reviews={course.reviews || '24K reviews'} />
+          
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>{course.level} · Course · {course.duration}</span>
           </div>
-          <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
-            {course.reason}
-          </p>
         </div>
 
-        {/* Enroll button */}
-        <div className="pt-1 mt-auto">
+        {/* AI Recommendation Reason */}
+        {course.reason && (
+          <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-[11px] text-blue-950 dark:text-blue-200 leading-relaxed">
+            <span className="font-bold text-blue-700 dark:text-blue-400 block mb-0.5 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Recommended for You:
+            </span>
+            {course.reason}
+          </div>
+        )}
+
+        {/* Action Button */}
+        <div className="pt-2 mt-auto">
           <a
             href={course.url}
             target="_blank"
             rel="noreferrer"
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-extrabold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-sky-600 dark:hover:bg-sky-500 dark:hover:text-slate-950 transition-all shadow-sm hover:shadow-md group/btn"
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-bold bg-[#172B4D] hover:bg-blue-600 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-blue-500 dark:hover:text-white transition-all shadow-2xs"
           >
-            Start Learning
-            <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+            <span>Open Course</span>
+            <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
+
       </div>
-    </div>
+    </Card>
   );
 }
 
-/* ─── Skeleton for loading ───────────────────────────────────── */
-function CourseSkeleton() {
-  return (
-    <div className="rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 animate-pulse">
-      <div className="h-44 bg-slate-200 dark:bg-slate-800" />
-      <div className="p-5 space-y-3">
-        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full w-2/3" />
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full w-full" />
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full w-4/5" />
-        <div className="flex gap-1.5">
-          {[1,2,3].map(i => <div key={i} className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-lg" />)}
-        </div>
-        <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl" />
-        <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded-xl mt-2" />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Page ──────────────────────────────────────────────── */
 export default function Courses() {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedLevel, setSelectedLevel] = useState('all');
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -358,17 +327,16 @@ export default function Courses() {
           const merged = data.courses.map((c) => {
             const platform = c.platform || 'Coursera';
             const title = c.title || '';
-            // Always resolve to a guaranteed valid, platform-correct URL
             const safeUrl = resolveUrl(platform, title, c.url);
             return {
               category: 'fullstack',
               level: 'Intermediate',
-              duration: '20 hours',
-              rating: 4.7,
-              students: '50,000+',
+              duration: '3-4 Weeks',
+              rating: 4.8,
+              reviews: '28K reviews',
               skills: [],
               ...c,
-              url: safeUrl,          // override with validated URL
+              url: safeUrl,
               platform,
               title,
             };
@@ -378,7 +346,7 @@ export default function Courses() {
           setCourses(defaultCourses);
         }
       } catch (err) {
-        console.warn('Backend courses endpoint unreachable, showing curated learning paths', err);
+        console.warn('Backend courses endpoint unreachable, showing curated learning catalog', err);
         setCourses(defaultCourses);
       } finally {
         setIsLoading(false);
@@ -395,91 +363,126 @@ export default function Courses() {
       (c.reason || '').toLowerCase().includes(q) ||
       (c.skills || []).some((s) => s.toLowerCase().includes(q));
     const matchesCategory = selectedCategory === 'all' || c.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesLevel = selectedLevel === 'all' || (c.level || '').toLowerCase().includes(selectedLevel);
+    return matchesSearch && matchesCategory && matchesLevel;
   });
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto animate-fade-in">
-
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-sky-50 dark:bg-sky-950/60 text-sky-500 rounded-2xl shadow-sm">
-            <GraduationCap className="w-6 h-6" />
+    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
+      
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#E5EAF1] dark:border-slate-800">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold mb-1">
+            <GraduationCap className="w-3.5 h-3.5" />
+            Curated Upskilling Catalog
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100">
-              Recommended Courses & Upskilling
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Hand-picked learning paths targeted at closing your identified skill gaps.
-            </p>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#172B4D] dark:text-slate-100">
+            Recommended Courses & Certifications
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Targeted at bridging detected skill gaps and interview weaknesses.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900/60 text-sky-700 dark:text-sky-300 text-xs font-bold">
-            <TrendingUp className="w-3.5 h-3.5" />
-            {courses.length} Curated Paths
-          </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="blue" size="md">
+            {filteredCourses.length} Learning Pathways Available
+          </Badge>
         </div>
       </div>
 
-      {/* ── Search & Filter Toolbar ── */}
-      <Card className="p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search courses, platforms, or skills..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-xs sm:text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition-all"
-          />
+      {/* Filter & Search Toolbar (Reference Image 2: "Filter & Sort (1)", Topic, Level, Clear all) */}
+      <Card className="p-4 sm:p-5 space-y-3.5">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="What do you want to learn? (e.g. LangChain, React, Kubernetes)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800/80 border border-[#E5EAF1] dark:border-slate-700 rounded-xl py-2 pl-9 pr-4 text-xs sm:text-sm text-[#172033] dark:text-slate-200 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 transition-all"
+            />
+          </div>
+
+          {/* Quick Clear All Button */}
+          {(searchQuery || selectedCategory !== 'all' || selectedLevel !== 'all') && (
+            <button
+              onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setSelectedLevel('all'); }}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-bold flex items-center gap-1 self-start md:self-center"
+            >
+              <RotateCcw className="w-3 h-3" /> Clear all filters
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto no-scrollbar">
+        {/* Filter Pills Row (Reference Image 2 style) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1 border-t border-[#E5EAF1] dark:border-slate-800">
+          <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mr-1">
+            <Filter className="w-3.5 h-3.5" /> Topic:
+          </span>
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
               }`}
             >
               {cat.label}
             </button>
           ))}
+
+          <span className="text-xs font-bold text-slate-400 ml-3 mr-1">Level:</span>
+          {['all', 'beginner', 'intermediate', 'advanced'].map((lvl) => (
+            <button
+              key={lvl}
+              onClick={() => setSelectedLevel(lvl)}
+              className={`shrink-0 px-2.5 py-1 rounded-lg text-xs capitalize font-medium transition-colors ${
+                selectedLevel === lvl
+                  ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {lvl}
+            </button>
+          ))}
         </div>
       </Card>
 
-      {/* ── Course Grid ── */}
+      {/* Course Catalog Grid (Reference Image 2: Grid of cards) */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => <CourseSkeleton key={i} />)}
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-2xl border border-[#E5EAF1] dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 animate-pulse">
+              <div className="h-36 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+              <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-full w-3/4" />
+              <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full w-1/2" />
+              <div className="h-10 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+            </div>
+          ))}
         </div>
       ) : filteredCourses.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course, index) => (
-              <CourseCard key={index} course={course} />
-            ))}
-          </div>
-          <p className="text-center text-xs text-slate-400 dark:text-slate-600 pt-2">
-            Showing {filteredCourses.length} of {courses.length} recommended learning paths · Powered by CareerCraft AI
-          </p>
-        </>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCourses.map((course, idx) => (
+            <CourseCard key={idx} course={course} />
+          ))}
+        </div>
       ) : (
         <EmptyState
           icon={BookOpen}
-          title="No courses match your filter"
-          description="Try clearing your search query or selecting 'All Courses' to see the full roadmap."
-          actionLabel="Clear Filters"
-          onAction={() => { setSearchQuery(''); setSelectedCategory('all'); }}
+          title="No courses found"
+          description="Try broadening your search keyword or clearing category filters."
+          actionLabel="Reset Filters"
+          onAction={() => { setSearchQuery(''); setSelectedCategory('all'); setSelectedLevel('all'); }}
         />
       )}
+
     </div>
   );
 }

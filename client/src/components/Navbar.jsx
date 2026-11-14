@@ -115,11 +115,11 @@ export default function Navbar() {
           
           {/* Logo (Left) */}
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-tr from-sky-600 to-sky-500 rounded-xl flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform text-white">
-              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-tr from-blue-700 to-blue-500 rounded-xl flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform text-white">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              CareerCraft<span className="text-sky-500">AI</span>
+            <span className="text-base sm:text-lg font-extrabold tracking-tight text-[#172B4D] dark:text-slate-100">
+              CareerCraft<span className="text-blue-600">AI</span>
             </span>
           </Link>
 

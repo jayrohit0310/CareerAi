@@ -100,12 +100,12 @@ export default function Results() {
       {/* Top Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-sky-50 dark:bg-sky-950/60 text-sky-500 rounded-2xl shadow-2xs">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-2xl shadow-2xs">
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100">
-              Indian Tech Salary & Compensation Estimator
+            <h1 className="text-xl sm:text-2xl font-extrabold text-[#172B4D] dark:text-slate-100">
+              Tech Salary & Compensation Estimator
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               Live INR market benchmarking based on verified Indian engineering surveys, LPA standards, and tech hubs.
@@ -170,13 +170,13 @@ export default function Results() {
 
       {/* Main Big Salary Showcase Card */}
       <Card className="overflow-hidden shadow-md">
-        <div className="p-8 sm:p-12 text-center bg-slate-950 dark:bg-black text-white relative overflow-hidden border-b border-slate-800">
+        <div className="p-8 sm:p-12 text-center bg-gradient-to-r from-[#172B4D] via-[#1E3A67] to-[#172B4D] text-white relative overflow-hidden border-b border-slate-750">
           <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
             <BarChart3 className="w-80 h-80 absolute -bottom-10 -right-10 text-white" />
           </div>
           
           <div className="relative z-10 space-y-2 max-w-xl mx-auto">
-            <span className="text-xs font-bold tracking-wider uppercase px-3 py-1 bg-sky-950/80 rounded-full text-sky-300 border border-sky-800/60">
+            <span className="text-xs font-bold tracking-wider uppercase px-3 py-1 bg-white/10 rounded-full text-blue-200 border border-white/15">
               Estimated Total Target Base (INR)
             </span>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-100">
@@ -185,12 +185,12 @@ export default function Results() {
           </div>
           
           <div className="flex items-center justify-center relative z-10 mt-6 mb-2">
-            <span className="text-3xl sm:text-5xl font-light text-sky-400 mr-1.5">₹</span>
+            <span className="text-3xl sm:text-5xl font-light text-blue-300 mr-1.5">₹</span>
             <span className="text-5xl sm:text-7xl font-extrabold tracking-tight text-white">
               {median.toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/20 border border-sky-400/30 rounded-xl text-sky-300 font-extrabold text-sm relative z-10 mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/15 border border-white/20 rounded-xl text-white font-extrabold text-sm relative z-10 mb-2">
             Equivalent to ~{formatLpa(median)}
           </div>
           <p className="text-slate-400 text-xs sm:text-sm font-medium relative z-10">

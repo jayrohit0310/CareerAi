@@ -212,24 +212,24 @@ export default function Jobs() {
       {/* Top Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/60 rounded-2xl shadow-2xs">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/60 rounded-2xl shadow-2xs">
             <Briefcase className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-[#172B4D] dark:text-slate-100">
               Verified Jobs & Internships
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Live Indian tech openings & student internships with guaranteed working links and verified INR compensation.
+              Live Indian tech openings & student internships benchmarked to your talent inventory.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge variant="sky" size="md" dot>
+          <Badge variant="blue" size="md" dot>
             Live India Openings
           </Badge>
-          <Badge variant="slate" size="md">
+          <Badge variant="emerald" size="md">
             ₹ INR Compensation
           </Badge>
         </div>

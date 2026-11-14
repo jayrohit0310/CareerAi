@@ -3,16 +3,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
+  --color-primary-navy: #172B4D;
+  --color-primary-blue: #3976D3;
+  --color-secondary-violet: #8B5CF6;
+  --color-saas-bg: #F4F6FA;
+  --color-saas-card: #FFFFFF;
+  --color-saas-text: #172033;
+  --color-saas-secondary: #64748B;
+  --color-saas-border: #E5EAF1;
+  --color-saas-success: #16A078;
+  --color-saas-warning: #E9A23B;
+  --color-saas-danger: #DC6262;
 }
 
 @layer base {
@@ -21,7 +22,7 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-[#070b12] dark:text-slate-100 antialiased font-sans transition-colors duration-200;
+    @apply bg-[#F4F6FA] text-[#172033] dark:bg-[#0B101B] dark:text-slate-100 antialiased font-sans transition-colors duration-200;
   }
 
   /* Custom Slim Scrollbars */
@@ -164,10 +165,10 @@
   }
 
   .input-field {
-    @apply block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 px-3.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-blue-500 dark:focus:border-blue-500 focus:ring-3 focus:ring-blue-500/15 sm:text-sm sm:leading-6 transition-all duration-150;
+    @apply block w-full rounded-xl border border-[#E5EAF1] dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 px-3.5 text-[#172033] dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-blue-500 dark:focus:border-blue-500 focus:ring-3 focus:ring-blue-500/15 sm:text-sm sm:leading-6 transition-all duration-150;
   }
 
   .card-base {
-    @apply bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/90 dark:border-slate-800 overflow-hidden transition-all duration-150;
+    @apply bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-[#E5EAF1] dark:border-slate-800 overflow-hidden transition-all duration-150;
   }
 }

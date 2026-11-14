@@ -99,11 +99,11 @@ export default function Login() {
         {/* Branding header */}
         <div className="relative z-10">
           <Link to="/" className="inline-flex items-center gap-2.5 group">
-            <div className="w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform text-white">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform text-white">
               <TrendingUp className="w-5 h-5" />
             </div>
             <span className="text-2xl font-bold tracking-tight text-white">
-              CareerCraft<span className="text-sky-400">AI</span>
+              CareerCraft<span className="text-blue-400">AI</span>
             </span>
           </Link>
         </div>
@@ -167,11 +167,11 @@ export default function Login() {
           {/* Mobile branding header */}
           <div className="text-center lg:text-left">
             <Link to="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-9 h-9 bg-sky-500 rounded-xl flex items-center justify-center shadow-md text-white">
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-md text-white">
                 <TrendingUp className="w-5 h-5" />
               </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                CareerCraft<span className="text-sky-500">AI</span>
+              <span className="text-xl font-bold tracking-tight text-[#172B4D] dark:text-slate-100">
+                CareerCraft<span className="text-blue-600">AI</span>
               </span>
             </Link>
 
