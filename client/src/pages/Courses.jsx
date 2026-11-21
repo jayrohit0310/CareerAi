@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getCourseRecommendations } from '../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { getCourseRecommendations, getResumesList } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -11,7 +11,8 @@ import {
   Star,
   Filter,
   ExternalLink,
-  RotateCcw
+  RotateCcw,
+  FileText
 } from 'lucide-react';
 
 /* Category metadata with refined SaaS accents */
@@ -319,41 +320,77 @@ export default function Courses() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLevel, setSelectedLevel] = useState('all');
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const data = await getCourseRecommendations();
-        if (data && data.courses && data.courses.length > 0) {
-          const merged = data.courses.map((c) => {
-            const platform = c.platform || 'Coursera';
-            const title = c.title || '';
-            const safeUrl = resolveUrl(platform, title, c.url);
-            return {
-              category: 'fullstack',
-              level: 'Intermediate',
-              duration: '3-4 Weeks',
-              rating: 4.8,
-              reviews: '28K reviews',
-              skills: [],
-              ...c,
-              url: safeUrl,
-              platform,
-              title,
-            };
-          });
-          setCourses(merged);
-        } else {
-          setCourses(defaultCourses);
+  // Multi-resume support state
+  const [resumesList, setResumesList] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
+  const [activeResumeFilename, setActiveResumeFilename] = useState('');
+
+  const fetchCoursesForResume = useCallback(async (resumeId = null) => {
+    setIsLoading(true);
+    try {
+      const data = await getCourseRecommendations(resumeId);
+      if (data && data.courses && data.courses.length > 0) {
+        const merged = data.courses.map((c) => {
+          const platform = c.platform || 'Coursera';
+          const title = c.title || '';
+          const safeUrl = resolveUrl(platform, title, c.url);
+          return {
+            category: 'fullstack',
+            level: 'Intermediate',
+            duration: '3-4 Weeks',
+            rating: 4.8,
+            reviews: '28K reviews',
+            skills: [],
+            ...c,
+            url: safeUrl,
+            platform,
+            title,
+          };
+        });
+        setCourses(merged);
+        if (data.resume_filename) {
+          setActiveResumeFilename(data.resume_filename);
         }
-      } catch (err) {
-        console.warn('Backend courses endpoint unreachable, showing curated learning catalog', err);
+      } else {
         setCourses(defaultCourses);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    fetchCourses();
+    } catch (err) {
+      console.warn('Backend courses endpoint unreachable, showing curated learning catalog', err);
+      setCourses(defaultCourses);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    const initResumes = async () => {
+      try {
+        const res = await getResumesList();
+        const list = res?.resumes || [];
+        setResumesList(list);
+        if (list.length > 0) {
+          const primary = list.find(r => r.is_primary) || list[0];
+          setSelectedResumeId(primary.id);
+          setActiveResumeFilename(primary.filename);
+          await fetchCoursesForResume(primary.id);
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not load resumes list:', e);
+      }
+      await fetchCoursesForResume(null);
+    };
+    initResumes();
+  }, [fetchCoursesForResume]);
+
+  const handleResumeSelect = (newResumeId) => {
+    setSelectedResumeId(newResumeId);
+    const target = resumesList.find(r => r.id === newResumeId);
+    if (target) {
+      setActiveResumeFilename(target.filename);
+    }
+    fetchCoursesForResume(newResumeId);
+  };
 
   const filteredCourses = courses.filter((c) => {
     const q = searchQuery.toLowerCase();
@@ -391,6 +428,42 @@ export default function Courses() {
           </Badge>
         </div>
       </div>
+
+      {/* Resume Intelligence Context Bar */}
+      {activeResumeFilename && (
+        <div className="p-3.5 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl border border-blue-200/60 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                Recommended based on: <span className="text-blue-600 dark:text-blue-400">{activeResumeFilename}</span>
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                AI scan analyzed your skill gaps and mapped targeted curriculum.
+              </p>
+            </div>
+          </div>
+
+          {resumesList.length > 1 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-slate-400 font-semibold">Switch Resume:</span>
+              <select
+                value={selectedResumeId || ''}
+                onChange={(e) => handleResumeSelect(Number(e.target.value))}
+                className="text-xs bg-white dark:bg-slate-800 border border-[#E5EAF1] dark:border-slate-700 rounded-xl px-2.5 py-1.5 font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              >
+                {resumesList.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.filename} {r.is_primary ? '(Active)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filter & Search Toolbar (Reference Image 2: "Filter & Sort (1)", Topic, Level, Clear all) */}
       <Card className="p-4 sm:p-5 space-y-3.5">

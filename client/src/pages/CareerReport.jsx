@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCareerReport } from '../services/api';
+import { getCareerReport, getResumesList, scanResume } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -17,7 +18,8 @@ import {
   Award,
   Calendar,
   Compass,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
 
 const demandBadgeVariant = (demand) => {
@@ -123,36 +125,81 @@ const FALLBACK_REPORT = {
 export default function CareerReport() {
   const navigate = useNavigate();
   const printRef = useRef(null);
+  const toast = useToast();
 
   const [report, setReport] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRoleModal, setSelectedRoleModal] = useState(null);
 
-  useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        const data = await getCareerReport();
-        if (data && data.matches && data.matches.length > 0) {
-          // Normalize skill gaps to have severity if needed
-          const normalizedMatches = data.matches.map(m => ({
-            ...m,
-            skill_gaps: (m.skill_gaps || []).map(g => 
-              typeof g === 'string' ? { name: g, severity: 'MODERATE' } : g
-            )
-          }));
-          setReport({ ...data, matches: normalizedMatches });
-        } else {
-          setReport(FALLBACK_REPORT);
-        }
-      } catch (err) {
-        console.warn('Career report fetch failed, using curated pathways.', err);
+  // Multi-resume state
+  const [resumesList, setResumesList] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+
+  const fetchReportForResume = useCallback(async (resumeId = null) => {
+    setIsLoading(true);
+    try {
+      const data = await getCareerReport(resumeId);
+      if (data && data.matches && data.matches.length > 0) {
+        // Normalize skill gaps to have severity if needed
+        const normalizedMatches = data.matches.map(m => ({
+          ...m,
+          skill_gaps: (m.skill_gaps || []).map(g => 
+            typeof g === 'string' ? { name: g, severity: 'MODERATE' } : g
+          )
+        }));
+        setReport({ ...data, matches: normalizedMatches });
+      } else {
         setReport(FALLBACK_REPORT);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    fetchReport();
+    } catch (err) {
+      console.warn('Career report fetch failed, using curated pathways.', err);
+      setReport(FALLBACK_REPORT);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    const initResumes = async () => {
+      try {
+        const res = await getResumesList();
+        const list = res?.resumes || [];
+        setResumesList(list);
+        if (list.length > 0) {
+          const primary = list.find(r => r.is_primary) || list[0];
+          setSelectedResumeId(primary.id);
+          await fetchReportForResume(primary.id);
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not load resumes list:', e);
+      }
+      await fetchReportForResume(null);
+    };
+    initResumes();
+  }, [fetchReportForResume]);
+
+  const handleResumeSelect = (newResumeId) => {
+    setSelectedResumeId(newResumeId);
+    fetchReportForResume(newResumeId);
+  };
+
+  const handleTriggerScan = async () => {
+    if (!selectedResumeId) return;
+    setIsScanning(true);
+    try {
+      toast.info('Re-running one-time AI talent scan on this resume...', 'Scanning Dossier');
+      await scanResume(selectedResumeId);
+      await fetchReportForResume(selectedResumeId);
+      toast.success('Dossier refreshed with updated career matches and salary benchmark!', 'Dossier Updated');
+    } catch (err) {
+      console.error('Scan error:', err);
+      toast.error('Could not refresh dossier scan.', 'Scan Error');
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const matches = report?.matches || [];
   const topMatch = matches[0] || {};
@@ -215,6 +262,53 @@ export default function CareerReport() {
             </Button>
           </div>
         </div>
+
+        {/* Resume Intelligence Context Bar */}
+        {report?.resume_filename && (
+          <div className="no-print p-3.5 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl border border-blue-200/60 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                  Dossier synthesized from: <span className="text-blue-600 dark:text-blue-400">{report.resume_filename}</span>
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Target candidate profile: <span className="font-semibold">{report.candidate_name || 'Candidate'}</span> • One-time AI scan aligned.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {resumesList.length > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-semibold">Switch Resume:</span>
+                  <select
+                    value={selectedResumeId || ''}
+                    onChange={(e) => handleResumeSelect(Number(e.target.value))}
+                    className="text-xs bg-white dark:bg-slate-800 border border-[#E5EAF1] dark:border-slate-700 rounded-xl px-2.5 py-1.5 font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                  >
+                    {resumesList.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.filename} {r.is_primary ? '(Active)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="xs"
+                icon={Sparkles}
+                disabled={isScanning}
+                onClick={handleTriggerScan}
+              >
+                {isScanning ? 'Scanning...' : 'Re-Scan Dossier'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Top Section: Your Career Match & Strengths Analysis (Inspired by Reference Image 5) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

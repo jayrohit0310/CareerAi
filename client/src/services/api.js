@@ -95,22 +95,27 @@ export const updateSkills = async (skills) => {
 
 // --- New Pipeline Endpoints ---
 
-export const getCareerMatches = async () => {
-  const response = await api.get('/career/matches');
+export const getCareerMatches = async (resumeId) => {
+  const params = {};
+  if (resumeId) params.resume_id = resumeId;
+  const response = await api.get('/career/matches', { params });
   return response.data;
 };
 
-export const getCareerReport = async () => {
-  const response = await api.get('/career/report');
+export const getCareerReport = async (resumeId) => {
+  const params = {};
+  if (resumeId) params.resume_id = resumeId;
+  const response = await api.get('/career/report', { params });
   return response.data;
 };
 
-export const getSalaryEstimate = async (role, experienceYears) => {
+export const getSalaryEstimate = async (role, experienceYears, resumeId) => {
   const params = {};
   if (role) params.role = role;
   if (experienceYears !== undefined && experienceYears !== null) {
     params.experience_years = experienceYears;
   }
+  if (resumeId) params.resume_id = resumeId;
   const response = await api.get('/salary/estimate', { params });
   return response.data;
 };
@@ -193,6 +198,21 @@ export const updateResumeDetails = async (resumeId, updatedData) => {
   return response.data;
 };
 
+export const scanResume = async (resumeId) => {
+  const response = await api.post(`/resume/${resumeId}/scan`);
+  return response.data;
+};
+
+export const setPrimaryResume = async (resumeId) => {
+  const response = await api.post(`/resume/${resumeId}/set-primary`);
+  return response.data;
+};
+
+export const deleteResume = async (resumeId) => {
+  const response = await api.delete(`/resume/${resumeId}`);
+  return response.data;
+};
+
 export const sendChatMessage = async (message, conversationHistory = []) => {
   const response = await api.post('/chatbot/message', {
     message: message,
@@ -201,16 +221,19 @@ export const sendChatMessage = async (message, conversationHistory = []) => {
   return response.data;
 };
 
-export const getCourseRecommendations = async () => {
-  const response = await api.get('/course/recommendations');
+export const getCourseRecommendations = async (resumeId) => {
+  const params = {};
+  if (resumeId) params.resume_id = resumeId;
+  const response = await api.get('/course/recommendations', { params });
   return response.data;
 };
 
-export const getJobRecommendations = async (opportunityType = 'all') => {
+export const getJobRecommendations = async (opportunityType = 'all', resumeId) => {
   const params = {};
   if (opportunityType && opportunityType !== 'all') {
     params.opportunity_type = opportunityType;
   }
+  if (resumeId) params.resume_id = resumeId;
   const response = await api.get('/jobs/recommendations', { params });
   return response.data;
 };

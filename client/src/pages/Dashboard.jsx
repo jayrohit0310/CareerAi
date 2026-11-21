@@ -1,10 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { api, updateSkills, getInterviewAnalytics, getInterviewHistory, getResumesList } from '../services/api';
+import { 
+  api, 
+  updateSkills, 
+  getInterviewAnalytics, 
+  getInterviewHistory, 
+  getResumesList,
+  getResumeDetails,
+  scanResume,
+  setPrimaryResume,
+  deleteResume
+} from '../services/api';
 import { useToast } from '../context/ToastContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 import ProgressRing from '../components/ui/ProgressRing';
 import { 
   UploadCloud, 
@@ -24,7 +35,10 @@ import {
   Award,
   Play,
   UserRoundCheck,
-  ChevronRight
+  ChevronRight,
+  FolderOpen,
+  Trash2,
+  GraduationCap
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -36,6 +50,14 @@ export default function Dashboard() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
   
+  // Resumes Vault & Scan States
+  const [resumesList, setResumesList] = useState([]);
+  const [activeResumeId, setActiveResumeId] = useState(null);
+  const [activeResumeScan, setActiveResumeScan] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [selectedScanDossier, setSelectedScanDossier] = useState(null);
+  
   // Drag-and-drop skills reordering state
   const [draggedSkillIndex, setDraggedSkillIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -45,6 +67,7 @@ export default function Dashboard() {
   const [recentInterviews, setRecentInterviews] = useState([]);
 
   const fileInputRef = useRef(null);
+  const modalFileInputRef = useRef(null);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -63,13 +86,46 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Load resumes and active scan
+  const refreshResumesVault = useCallback(async () => {
+    try {
+      const resumesData = await getResumesList();
+      const list = resumesData?.resumes || [];
+      setResumesList(list);
+
+      if (list.length > 0) {
+        const primary = list.find(r => r.is_primary) || list[0];
+        setActiveResumeId(primary.id);
+        setUploadedFileName(primary.filename);
+
+        // Fetch detailed scan dossier for primary resume
+        try {
+          const details = await getResumeDetails(primary.id);
+          if (details?.scan_results) {
+            setActiveResumeScan(details.scan_results);
+            if (details.scan_results.skills && details.scan_results.skills.length > 0) {
+              setSkills(details.scan_results.skills);
+            }
+          }
+        } catch (detailErr) {
+          console.warn('Could not load primary resume scan dossier:', detailErr);
+        }
+      } else {
+        setActiveResumeId(null);
+        setUploadedFileName('');
+        setActiveResumeScan(null);
+      }
+    } catch (err) {
+      console.warn('Could not load resumes vault:', err);
+    }
+  }, []);
+
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [analytics, history, resumesData] = await Promise.allSettled([
+        const [analytics, history] = await Promise.allSettled([
           getInterviewAnalytics(),
-          getInterviewHistory(),
-          getResumesList()
+          getInterviewHistory()
         ]);
         if (analytics.status === 'fulfilled') {
           setInterviewAnalytics(analytics.value);
@@ -77,18 +133,13 @@ export default function Dashboard() {
         if (history.status === 'fulfilled') {
           setRecentInterviews((history.value.history || []).slice(0, 4));
         }
-        if (resumesData.status === 'fulfilled' && resumesData.value?.resumes?.length > 0) {
-          const primary = resumesData.value.resumes.find(r => r.is_primary) || resumesData.value.resumes[0];
-          if (primary?.filename) {
-            setUploadedFileName(primary.filename);
-          }
-        }
       } catch (err) {
-        console.warn('Could not load dashboard data:', err);
+        console.warn('Could not load dashboard interview data:', err);
       }
+      await refreshResumesVault();
     };
     loadDashboardData();
-  }, []);
+  }, [refreshResumesVault]);
 
   const handleFileUpload = async (file) => {
     if (!file) return;
@@ -103,24 +154,100 @@ export default function Dashboard() {
     formData.append('file', file);
     
     setIsUploading(true);
-    setUploadStatus('Parsing document with AI...');
+    setUploadStatus('Running one-time AI talent scan...');
     try {
       const res = await api.post('/resume/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       const name = res.data.filename || file.name;
       setUploadedFileName(name);
-      toast.success(`${name} parsed and skills extracted!`, 'Resume Processed');
+      setActiveResumeId(res.data.resume_id);
+      
+      if (res.data.scan_results) {
+        setActiveResumeScan(res.data.scan_results);
+      }
+
       if (res.data.skills) {
         setSkills(res.data.skills);
         setUser(prev => ({ ...prev, extracted_skills: res.data.skills.join(',') }));
       }
+
+      toast.success(
+        `One-time AI scan completed for ${name}! Recommendations synchronized across all modules.`,
+        'Resume Processed & Calibrated'
+      );
+      await refreshResumesVault();
     } catch (err) {
       const errMsg = err.response?.data?.detail || 'Failed to upload resume. Make sure backend is running.';
       toast.error(errMsg, 'Upload Error');
     } finally {
       setIsUploading(false);
       setUploadStatus('');
+    }
+  };
+
+  const handleTriggerScan = async (resumeId) => {
+    if (!resumeId) return;
+    setIsScanning(true);
+    try {
+      toast.info('Running AI talent scan across career pathways, courses, and salary...', 'Scanning Resume');
+      const res = await scanResume(resumeId);
+      if (res.scan_results) {
+        setActiveResumeScan(res.scan_results);
+        if (res.scan_results.skills) {
+          setSkills(res.scan_results.skills);
+          setUser(prev => ({ ...prev, extracted_skills: res.scan_results.skills.join(',') }));
+        }
+        toast.success(
+          `AI Scan complete for ${res.filename}! All recommendations refreshed.`,
+          'Scan Successful'
+        );
+      }
+      await refreshResumesVault();
+    } catch (err) {
+      console.error('Scan error:', err);
+      toast.error('Failed to run AI scan. Please verify backend connection.', 'Scan Failed');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleSetPrimary = async (resumeId) => {
+    try {
+      const res = await setPrimaryResume(resumeId);
+      toast.success(res.message || 'Active resume updated.', 'Active Resume Switched');
+      await refreshResumesVault();
+    } catch (err) {
+      console.error('Set primary error:', err);
+      toast.error('Could not switch active resume.', 'Switch Failed');
+    }
+  };
+
+  const handleDeleteResume = async (resumeId) => {
+    try {
+      await deleteResume(resumeId);
+      toast.info('Resume document removed from vault.', 'Deleted');
+      await refreshResumesVault();
+    } catch (err) {
+      console.error('Delete resume error:', err);
+      toast.error('Failed to delete resume.', 'Delete Failed');
+    }
+  };
+
+  const handleInspectResume = async (resumeId) => {
+    try {
+      const details = await getResumeDetails(resumeId);
+      if (details.scan_results) {
+        setSelectedScanDossier(details.scan_results);
+      } else {
+        toast.info('This resume has not been scanned yet. Running AI scan now...', 'Scanning');
+        await handleTriggerScan(resumeId);
+        const updated = await getResumeDetails(resumeId);
+        setSelectedScanDossier(updated.scan_results);
+      }
+    } catch (err) {
+      console.error('Inspect resume error:', err);
+      toast.error('Could not load scan results.', 'Error');
     }
   };
 
@@ -207,8 +334,16 @@ export default function Dashboard() {
     }
   };
 
-  const readinessScore = Math.min(100, Math.max(40, skills.length * 12 + (interviewAnalytics?.total_completed ? 15 : 0)));
+  // Dynamic values driven directly by active resume scan results
+  const readinessScore = activeResumeScan?.readiness_score 
+    || (skills.length > 0 ? Math.min(100, Math.max(50, skills.length * 10 + 20)) : 0);
+
+  const targetSalary = activeResumeScan?.salary_formatted 
+    || (activeResumeScan?.salary_estimate?.median_salary ? `₹${Math.round(activeResumeScan.salary_estimate.median_salary / 100000)} LPA` : '₹18 - ₹26 LPA');
+
+  const targetRole = activeResumeScan?.target_role || 'Full-Stack Software Engineer';
   const userName = user?.email ? user.email.split('@')[0] : 'Candidate';
+  const activeResume = resumesList.find(r => r.id === activeResumeId) || resumesList.find(r => r.is_primary);
 
   return (
     <div className="space-y-7 animate-fade-in">
@@ -220,13 +355,15 @@ export default function Dashboard() {
           <div className="space-y-2 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-xs border border-white/15 rounded-full text-xs font-semibold text-blue-200">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span>AI-Powered Career Intelligence</span>
+              <span>Resume-Calibrated Career Intelligence</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Welcome back, {userName}! 👋
             </h1>
             <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal">
-              Your profile is synced. Practice STAR-structured mock interviews, analyze your skills readiness, and unlock benchmarked salaries.
+              {uploadedFileName 
+                ? `Active Resume: ${uploadedFileName} • Target: ${targetRole}. All courses, career dossiers, job suggestions, and compensation benchmarks are personalized from your profile.`
+                : 'Upload your resume below to initiate the one-time AI talent scan and calibrate your entire career acceleration portal.'}
             </p>
           </div>
 
@@ -240,6 +377,17 @@ export default function Dashboard() {
             >
               Start Practice Interview
             </Button>
+            {resumesList.length > 0 && (
+              <Button
+                onClick={() => setIsVaultModalOpen(true)}
+                variant="outline"
+                size="md"
+                icon={FolderOpen}
+                className="text-white border-white/20 hover:bg-white/10"
+              >
+                Resume Vault ({resumesList.length})
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -253,10 +401,11 @@ export default function Dashboard() {
               Readiness Score
             </span>
             <div className="text-2xl font-extrabold text-[#172033] dark:text-slate-100">
-              {readinessScore}%
+              {readinessScore > 0 ? `${readinessScore}%` : 'Pending'}
             </div>
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
-              <CheckCircle2 className="w-3 h-3" /> Market Aligned
+              <CheckCircle2 className="w-3 h-3" /> 
+              {activeResumeScan ? 'AI Calibrated' : (skills.length > 0 ? 'Skills Aligned' : 'Upload Resume')}
             </span>
           </div>
           <ProgressRing 
@@ -301,11 +450,11 @@ export default function Dashboard() {
               {skills.length}
             </div>
             <Badge variant="emerald" size="sm">
-              Verified
+              {uploadedFileName ? 'Resume Parsed' : 'Profile'}
             </Badge>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            {skills.length > 0 ? 'Prioritized in talent stack' : 'Add skills to start'}
+            {skills.length > 0 ? 'Prioritized in talent stack' : 'Upload resume to extract'}
           </p>
         </Card>
 
@@ -319,14 +468,14 @@ export default function Dashboard() {
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-2xl font-extrabold text-[#172033] dark:text-slate-100">
-              ₹24 LPA+
+              {targetSalary}
             </div>
             <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-              Top 20%
+              {activeResumeScan?.target_role ? 'Role Calibrated' : 'Market Aligned'}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Median Indian tech benchmark
+            {activeResumeScan?.target_role ? `Calibrated for ${activeResumeScan.target_role}` : 'Median Indian tech benchmark'}
           </p>
         </Card>
       </div>
@@ -337,7 +486,7 @@ export default function Dashboard() {
         {/* Left Column (2 Cols Wide): Resume, Priority Skills & Interview Performance */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Continue Learning / Fast Track Banner (Inspired by Reference Image 3 Campus LMS) */}
+          {/* Continue Learning / Fast Track Banner */}
           <div className="rounded-2xl p-6 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white shadow-xs relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
               <div className="space-y-1">
@@ -346,10 +495,10 @@ export default function Dashboard() {
                   Recommended Session
                 </span>
                 <h3 className="text-lg font-bold text-white pt-1">
-                  Full-Stack & Systems Architecture Interview
+                  {targetRole} Simulator
                 </h3>
                 <p className="text-xs text-blue-100">
-                  Intermediate Difficulty • 15 Minutes • AI Real-time Audio & STAR Critique
+                  {activeResumeScan?.experience_years ? `${activeResumeScan.experience_years} Yrs Exp Tier • ` : ''}15 Minutes • AI Real-time Audio & STAR Critique
                 </p>
               </div>
               <Button
@@ -364,27 +513,43 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Resume Upload & Draggable Priority Skills */}
+          {/* Resume Upload & Talent Inventory Vault */}
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-xl">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-[#172033] dark:text-slate-100">Resume & Talent Inventory</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">PDF skill extractor with priority reordering</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {resumesList.length > 0 
+                      ? `${resumesList.length} resume document${resumesList.length > 1 ? 's' : ''} in your vault • One-time AI scan powered`
+                      : 'Upload resume PDF to run the one-time talent intelligence scan'}
+                  </p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={UploadCloud}
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-              >
-                Upload Resume
-              </Button>
+              <div className="flex items-center gap-2">
+                {resumesList.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={FolderOpen}
+                    onClick={() => setIsVaultModalOpen(true)}
+                  >
+                    Resume Vault ({resumesList.length})
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={UploadCloud}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  Upload Resume
+                </Button>
+              </div>
             </div>
 
             {/* Drag & Drop Upload Dropzone */}
@@ -410,10 +575,10 @@ export default function Dashboard() {
                 }`} 
               />
               <p className="text-xs font-bold text-[#172033] dark:text-slate-200">
-                {isUploading ? (uploadStatus || 'Parsing document with AI...') : isDraggingFile ? 'Drop your resume PDF here' : 'Drop your PDF resume or click to browse'}
+                {isUploading ? (uploadStatus || 'Running one-time AI talent scan...') : isDraggingFile ? 'Drop your resume PDF here' : 'Drop your PDF resume or click to browse'}
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Supports PDF files up to 5MB
+                One upload executes a comprehensive scan across career matches, courses, jobs, and salary
               </p>
               <input 
                 type="file" 
@@ -424,14 +589,66 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Active File Pill */}
-            {uploadedFileName && (
-              <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-[#E5EAF1] dark:border-slate-800 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 truncate">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{uploadedFileName}</span>
+            {/* Active Resume & One-Time Scan Card */}
+            {activeResume && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl border border-blue-200/70 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs mt-0.5 shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm truncate">
+                        {activeResume.filename}
+                      </span>
+                      <Badge variant="emerald" size="sm">Active Primary</Badge>
+                      {activeResumeScan?.target_role && (
+                        <Badge variant="blue" size="sm" className="hidden sm:inline-flex">
+                          {activeResumeScan.target_role}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> One-time AI scan calibrated
+                      </span>
+                      <span>•</span>
+                      <span>{skills.length} skills</span>
+                      <span>•</span>
+                      <span>{targetSalary}</span>
+                    </p>
+                  </div>
                 </div>
-                <Badge variant="emerald" size="sm">Active</Badge>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={Sparkles}
+                    onClick={() => handleTriggerScan(activeResume.id)}
+                    disabled={isScanning}
+                  >
+                    {isScanning ? 'Scanning...' : 'Re-Scan AI'}
+                  </Button>
+                  {activeResumeScan && (
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      onClick={() => setSelectedScanDossier(activeResumeScan)}
+                    >
+                      View Scan Results
+                    </Button>
+                  )}
+                  {resumesList.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => setIsVaultModalOpen(true)}
+                    >
+                      Switch
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -565,76 +782,59 @@ export default function Dashboard() {
 
             {interviewAnalytics && interviewAnalytics.total_completed > 0 ? (
               <div className="space-y-4">
-                {/* 3 Difficulty Tiers */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-[#E5EAF1] dark:border-slate-800 text-xs">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Beginner Tier
+                  <div className="p-3.5 rounded-xl border border-emerald-200/60 bg-emerald-50/40 dark:bg-emerald-950/20">
+                    <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">Beginner</span>
+                    <span className="text-lg font-extrabold text-slate-900 dark:text-white mt-1 block">
+                      {interviewAnalytics.difficulty_breakdown?.beginner?.total || 0} Sessions
                     </span>
-                    <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-                      {interviewAnalytics.difficulty_stats?.beginner?.avg_score || 0} / 10
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      {interviewAnalytics.difficulty_stats?.beginner?.count || 0} sessions completed
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Avg Score: {interviewAnalytics.difficulty_breakdown?.beginner?.average_score ? `${interviewAnalytics.difficulty_breakdown.beginner.average_score}%` : 'N/A'}
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-[#E5EAF1] dark:border-slate-800 text-xs">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Intermediate Tier
+                  <div className="p-3.5 rounded-xl border border-blue-200/60 bg-blue-50/40 dark:bg-blue-950/20">
+                    <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider block">Intermediate</span>
+                    <span className="text-lg font-extrabold text-slate-900 dark:text-white mt-1 block">
+                      {interviewAnalytics.difficulty_breakdown?.intermediate?.total || 0} Sessions
                     </span>
-                    <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-                      {interviewAnalytics.difficulty_stats?.intermediate?.avg_score || 0} / 10
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      {interviewAnalytics.difficulty_stats?.intermediate?.count || 0} sessions completed
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Avg Score: {interviewAnalytics.difficulty_breakdown?.intermediate?.average_score ? `${interviewAnalytics.difficulty_breakdown.intermediate.average_score}%` : 'N/A'}
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-[#E5EAF1] dark:border-slate-800 text-xs">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Advanced Tier
+                  <div className="p-3.5 rounded-xl border border-purple-200/60 bg-purple-50/40 dark:bg-purple-950/20">
+                    <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider block">Advanced</span>
+                    <span className="text-lg font-extrabold text-slate-900 dark:text-white mt-1 block">
+                      {interviewAnalytics.difficulty_breakdown?.advanced?.total || 0} Sessions
                     </span>
-                    <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-                      {interviewAnalytics.difficulty_stats?.advanced?.avg_score || 0} / 10
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      {interviewAnalytics.difficulty_stats?.advanced?.count || 0} sessions completed
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Avg Score: {interviewAnalytics.difficulty_breakdown?.advanced?.average_score ? `${interviewAnalytics.difficulty_breakdown.advanced.average_score}%` : 'N/A'}
                     </span>
                   </div>
                 </div>
 
-                {/* Recent Interview History Feed */}
                 {recentInterviews.length > 0 && (
-                  <div className="pt-2">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
-                      Recent Interview History
-                    </h3>
+                  <div className="pt-3 border-t border-[#E5EAF1] dark:border-slate-800">
+                    <span className="text-xs font-bold text-[#172033] dark:text-slate-200 block mb-2">Recent Sessions</span>
                     <div className="space-y-2">
                       {recentInterviews.map((sess) => (
-                        <div key={sess.session_id} className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-[#E5EAF1] dark:border-slate-800 flex items-center justify-between text-xs">
+                        <div 
+                          key={sess.id}
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-[#E5EAF1] dark:border-slate-800 text-xs"
+                        >
                           <div>
-                            <span className="font-bold text-slate-800 dark:text-slate-200 capitalize">
-                              {sess.interview_type} ({sess.difficulty})
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                              {sess.role_domain || 'General Tech'} ({sess.difficulty})
                             </span>
-                            <span className="text-slate-400 block text-[11px] mt-0.5">
-                              {sess.started_at ? new Date(sess.started_at).toLocaleDateString() : 'Recent'} • {sess.duration_minutes}m duration
+                            <span className="text-[11px] text-slate-400 block">
+                              {new Date(sess.started_at).toLocaleDateString()}
                             </span>
                           </div>
-
-                          <div className="flex items-center gap-3">
-                            {sess.overall_score !== null && (
-                              <Badge variant={sess.overall_score >= 8.0 ? 'emerald' : 'blue'} size="sm">
-                                {sess.overall_score} / 10
-                              </Badge>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => navigate('/interview')}
-                              className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-xs"
-                            >
-                              Review
-                            </button>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={sess.overall_score >= 80 ? 'emerald' : 'blue'} size="sm">
+                              {sess.overall_score ? `${Math.round(sess.overall_score)}%` : 'In Progress'}
+                            </Badge>
                           </div>
                         </div>
                       ))}
@@ -643,10 +843,10 @@ export default function Dashboard() {
                 )}
               </div>
             ) : (
-              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-[#E5EAF1] dark:border-slate-700 text-center">
-                <Mic className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No mock interviews completed yet</h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto mb-4">
+              <div className="p-8 text-center bg-slate-50/60 dark:bg-slate-800/40 rounded-2xl border border-dashed border-[#E5EAF1] dark:border-slate-800">
+                <Play className="w-8 h-8 mx-auto text-blue-500 mb-2 opacity-80" />
+                <h3 className="text-xs font-bold text-[#172033] dark:text-slate-200">No mock interviews recorded yet</h3>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-1 mb-4">
                   Practice tailored questions with real-time speech dictation, timer constraints, and instant STAR critique.
                 </p>
                 <Button
@@ -662,7 +862,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Right Column: "Your Journey" & Profile Card (Inspired by Reference Image 3 Campus & Image 5) */}
+        {/* Right Column: "Your Journey" & Profile Card */}
         <div className="space-y-6">
           
           {/* Your Journey Card */}
@@ -696,7 +896,7 @@ export default function Dashboard() {
               {userName}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Target: Senior Full-Stack & AI Systems
+              Target: {targetRole}
             </p>
 
             {/* Earned Skills Pill Cloud */}
@@ -721,7 +921,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Next Steps Checklist (Inspired by Image 5) */}
+            {/* Next Steps Checklist */}
             <div className="mt-5 pt-4 border-t border-[#E5EAF1] dark:border-slate-800 text-left space-y-2.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
                 Action Checklist
@@ -749,7 +949,7 @@ export default function Dashboard() {
                   <Target className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-[#172033] dark:text-slate-200">Analyze Skill Gaps</p>
+                  <p className="text-xs font-bold text-[#172033] dark:text-slate-200">Analyze Career Dossier</p>
                   <p className="text-[10px] text-slate-400">Career GPS roadmap</p>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -782,7 +982,7 @@ export default function Dashboard() {
                 <Target className="w-4 h-4" />
               </div>
               <h4 className="text-xs font-bold text-[#172033] dark:text-slate-100">Career Match</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">Top 3 fit roles</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Top fit roles</p>
             </Card>
 
             <Card 
@@ -794,7 +994,7 @@ export default function Dashboard() {
                 <TrendingUp className="w-4 h-4" />
               </div>
               <h4 className="text-xs font-bold text-[#172033] dark:text-slate-100">Salary Tool</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">Market percentiles</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Market benchmarks</p>
             </Card>
 
             <Card 
@@ -806,7 +1006,7 @@ export default function Dashboard() {
                 <Briefcase className="w-4 h-4" />
               </div>
               <h4 className="text-xs font-bold text-[#172033] dark:text-slate-100">Job Matches</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">Active postings</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Verified postings</p>
             </Card>
 
             <Card 
@@ -825,6 +1025,272 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* MODAL 1: Resume Vault & Management Modal */}
+      <Modal
+        isOpen={isVaultModalOpen}
+        onClose={() => setIsVaultModalOpen(false)}
+        title="Resume Vault & Intelligence Vault"
+        description="Switch your active resume, check previous scan results, or upload additional resumes."
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-4 pt-2">
+          {/* Upload Another Resume button */}
+          <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-[#E5EAF1] dark:border-slate-700">
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Upload Another Resume Document</p>
+              <p className="text-[11px] text-slate-400">PDF format supported • Automatically triggers one-time AI scan</p>
+            </div>
+            <Button
+              size="sm"
+              variant="primary"
+              icon={UploadCloud}
+              disabled={isUploading}
+              onClick={() => modalFileInputRef.current?.click()}
+            >
+              {isUploading ? 'Uploading & Scanning...' : 'Upload New'}
+            </Button>
+            <input 
+              type="file" 
+              accept="application/pdf"
+              className="hidden" 
+              ref={modalFileInputRef}
+              onChange={(e) => {
+                handleFileUpload(e.target.files[0]);
+              }}
+            />
+          </div>
+
+          {/* List of resumes */}
+          <div className="space-y-2.5 max-h-96 overflow-y-auto no-scrollbar">
+            {resumesList.length > 0 ? (
+              resumesList.map((r) => {
+                const isCurrent = r.is_primary || r.id === activeResumeId;
+                return (
+                  <div
+                    key={r.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      isCurrent
+                        ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/30'
+                        : 'border-[#E5EAF1] dark:border-slate-800 bg-white dark:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-lg shrink-0 mt-0.5">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                              {r.filename}
+                            </span>
+                            {isCurrent && <Badge variant="emerald" size="sm">Active Primary</Badge>}
+                            {r.target_role && <Badge variant="blue" size="sm">{r.target_role}</Badge>}
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 flex-wrap">
+                            <span>Uploaded {r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recently'}</span>
+                            <span>•</span>
+                            <span>{r.skills?.length || 0} skills</span>
+                            {r.readiness_score && (
+                              <>
+                                <span>•</span>
+                                <span className="font-semibold text-emerald-600">{r.readiness_score}% Readiness</span>
+                              </>
+                            )}
+                            {r.target_salary && (
+                              <>
+                                <span>•</span>
+                                <span className="font-semibold text-purple-600">{r.target_salary}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                        {!isCurrent && (
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            onClick={() => handleSetPrimary(r.id)}
+                          >
+                            Set Active
+                          </Button>
+                        )}
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => handleInspectResume(r.id)}
+                        >
+                          Scan Results
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          icon={Sparkles}
+                          disabled={isScanning}
+                          onClick={() => handleTriggerScan(r.id)}
+                          title="Run AI scan on this resume"
+                        >
+                          Re-Scan
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteResume(r.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Delete resume"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-xs text-slate-400 text-center py-6">
+                No resumes uploaded yet. Upload a resume to populate your vault.
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL 2: Scan Results Dossier Modal */}
+      <Modal
+        isOpen={!!selectedScanDossier}
+        onClose={() => setSelectedScanDossier(null)}
+        title="One-Time AI Scan Results Dossier"
+        description="Comprehensive talent intelligence synchronized across courses, jobs, and career reports."
+        maxWidth="max-w-2xl"
+      >
+        {selectedScanDossier && (
+          <div className="space-y-5 pt-2 text-xs">
+            {/* Top Score & Target Role Header */}
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/60 rounded-2xl border border-blue-200/60 dark:border-slate-700 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block mb-0.5">
+                  Target Calibrated Role
+                </span>
+                <h3 className="text-base font-extrabold text-[#172033] dark:text-white">
+                  {selectedScanDossier.target_role || 'Software Engineer'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Candidate: {selectedScanDossier.candidate_name || 'Candidate'} • {selectedScanDossier.experience_years || 2} Years Experience Level
+                </p>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                  Readiness Match
+                </span>
+                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                  {selectedScanDossier.readiness_score || 85}%
+                </div>
+                <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 block mt-0.5">
+                  {selectedScanDossier.salary_formatted || '₹18 - ₹24 LPA'}
+                </span>
+              </div>
+            </div>
+
+            {/* Career Matches */}
+            {selectedScanDossier.career_matches && selectedScanDossier.career_matches.length > 0 && (
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-blue-600" />
+                  Top Career Role Matches
+                </h4>
+                <div className="space-y-2">
+                  {selectedScanDossier.career_matches.slice(0, 3).map((match, i) => (
+                    <div 
+                      key={i}
+                      className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-[#E5EAF1] dark:border-slate-700 flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 block">{match.title}</span>
+                        <span className="text-[11px] text-slate-400 line-clamp-1">{match.description}</span>
+                      </div>
+                      <Badge variant="blue" size="sm">{match.match_percentage}%</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Courses Snippet */}
+            {selectedScanDossier.courses && selectedScanDossier.courses.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                    Courses Calibrated for this Resume ({selectedScanDossier.courses.length})
+                  </h4>
+                  <button 
+                    onClick={() => { setSelectedScanDossier(null); navigate('/courses'); }}
+                    className="text-blue-600 text-[11px] font-bold hover:underline"
+                  >
+                    View in Courses →
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {selectedScanDossier.courses.slice(0, 2).map((c, i) => (
+                    <div key={i} className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-[#E5EAF1] dark:border-slate-700">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{c.title}</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">{c.platform} • {c.level || 'Intermediate'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Job Openings Snippet */}
+            {selectedScanDossier.jobs && selectedScanDossier.jobs.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                    Opportunities Matched ({selectedScanDossier.jobs.length})
+                  </h4>
+                  <button 
+                    onClick={() => { setSelectedScanDossier(null); navigate('/jobs'); }}
+                    className="text-blue-600 text-[11px] font-bold hover:underline"
+                  >
+                    View in Jobs →
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {selectedScanDossier.jobs.slice(0, 2).map((j, i) => (
+                    <div key={i} className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-[#E5EAF1] dark:border-slate-700">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{j.title}</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">{j.company} • {j.salary || 'Competitive'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Extracted Skills Chips */}
+            {selectedScanDossier.skills && selectedScanDossier.skills.length > 0 && (
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px] mb-2">
+                  Verified Skills in this Resume ({selectedScanDossier.skills.length})
+                </h4>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto no-scrollbar">
+                  {selectedScanDossier.skills.map((s, i) => (
+                    <span 
+                      key={i} 
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[11px] font-medium"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

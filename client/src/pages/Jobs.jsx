@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getJobRecommendations } from '../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { getJobRecommendations, getResumesList } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -18,7 +18,8 @@ import {
   GraduationCap,
   Sparkles,
   CheckCircle2,
-  Filter
+  Filter,
+  FileText
 } from 'lucide-react';
 
 const defaultOpportunities = [
@@ -144,14 +145,23 @@ export default function Jobs() {
   const [workTypeFilter, setWorkTypeFilter] = useState('all'); // 'all', 'remote', 'hybrid', 'onsite'
   const [savedJobs, setSavedJobs] = useState([]);
   const [selectedJobModal, setSelectedJobModal] = useState(null);
+
+  // Multi-resume support state
+  const [resumesList, setResumesList] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
+  const [activeResumeFilename, setActiveResumeFilename] = useState('');
+
   const toast = useToast();
 
-  const fetchOpportunities = async (oppType = 'all') => {
+  const fetchOpportunities = useCallback(async (oppType = 'all', resumeId = null) => {
     setIsLoading(true);
     try {
-      const data = await getJobRecommendations(oppType);
+      const data = await getJobRecommendations(oppType, resumeId);
       if (data && data.jobs && data.jobs.length > 0) {
         setOpportunities(data.jobs);
+        if (data.resume_filename) {
+          setActiveResumeFilename(data.resume_filename);
+        }
       } else {
         const fallback = oppType === 'all'
           ? defaultOpportunities
@@ -167,11 +177,37 @@ export default function Jobs() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchOpportunities(opportunityTypeFilter);
-  }, [opportunityTypeFilter]);
+    const initResumes = async () => {
+      try {
+        const res = await getResumesList();
+        const list = res?.resumes || [];
+        setResumesList(list);
+        if (list.length > 0) {
+          const primary = list.find(r => r.is_primary) || list[0];
+          setSelectedResumeId(primary.id);
+          setActiveResumeFilename(primary.filename);
+          await fetchOpportunities(opportunityTypeFilter, primary.id);
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not load resumes list:', e);
+      }
+      await fetchOpportunities(opportunityTypeFilter, null);
+    };
+    initResumes();
+  }, [fetchOpportunities, opportunityTypeFilter]);
+
+  const handleResumeSelect = (newResumeId) => {
+    setSelectedResumeId(newResumeId);
+    const target = resumesList.find(r => r.id === newResumeId);
+    if (target) {
+      setActiveResumeFilename(target.filename);
+    }
+    fetchOpportunities(opportunityTypeFilter, newResumeId);
+  };
 
   const toggleSaveJob = (idOrIndex, jobTitle) => {
     const isCurrentlySaved = savedJobs.includes(idOrIndex);
@@ -234,6 +270,42 @@ export default function Jobs() {
           </Badge>
         </div>
       </div>
+
+      {/* Resume Intelligence Context Bar */}
+      {activeResumeFilename && (
+        <div className="p-3.5 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl border border-blue-200/60 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                Matched to profile: <span className="text-blue-600 dark:text-blue-400">{activeResumeFilename}</span>
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Match percentages and requirements benchmarked against this resume's verified skills.
+              </p>
+            </div>
+          </div>
+
+          {resumesList.length > 1 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-slate-400 font-semibold">Switch Resume:</span>
+              <select
+                value={selectedResumeId || ''}
+                onChange={(e) => handleResumeSelect(Number(e.target.value))}
+                className="text-xs bg-white dark:bg-slate-800 border border-[#E5EAF1] dark:border-slate-700 rounded-xl px-2.5 py-1.5 font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              >
+                {resumesList.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.filename} {r.is_primary ? '(Active)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Primary Category Selector Tabs (Jobs vs Internships) */}
       <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 w-full sm:w-fit">
