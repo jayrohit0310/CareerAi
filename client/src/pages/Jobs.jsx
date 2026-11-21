@@ -7,13 +7,13 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import { SkeletonCard } from '../components/ui/Skeleton';
-import { 
-  Briefcase, 
-  MapPin, 
-  Building2, 
-  ExternalLink, 
-  Search, 
-  Bookmark, 
+import {
+  Briefcase,
+  MapPin,
+  Building2,
+  ExternalLink,
+  Search,
+  Bookmark,
   Clock,
   GraduationCap,
   Sparkles,
@@ -153,15 +153,15 @@ export default function Jobs() {
       if (data && data.jobs && data.jobs.length > 0) {
         setOpportunities(data.jobs);
       } else {
-        const fallback = oppType === 'all' 
-          ? defaultOpportunities 
+        const fallback = oppType === 'all'
+          ? defaultOpportunities
           : defaultOpportunities.filter(o => o.opportunity_type === oppType);
         setOpportunities(fallback);
       }
     } catch (err) {
       console.warn('Backend jobs endpoint unreachable, displaying verified Indian tech openings', err);
-      const fallback = oppType === 'all' 
-        ? defaultOpportunities 
+      const fallback = oppType === 'all'
+        ? defaultOpportunities
         : defaultOpportunities.filter(o => o.opportunity_type === oppType);
       setOpportunities(fallback);
     } finally {
@@ -191,7 +191,7 @@ export default function Jobs() {
     const skillsMatch = job.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) || false;
     const matchesSearch = !searchQuery || titleMatch || companyMatch || locMatch || skillsMatch;
 
-    const matchesOppType = opportunityTypeFilter === 'all' || 
+    const matchesOppType = opportunityTypeFilter === 'all' ||
       job.opportunity_type === opportunityTypeFilter;
 
     const locationText = (job.location || '').toLowerCase();
@@ -239,11 +239,10 @@ export default function Jobs() {
       <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 w-full sm:w-fit">
         <button
           onClick={() => setOpportunityTypeFilter('all')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            opportunityTypeFilter === 'all'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${opportunityTypeFilter === 'all'
+            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
         >
           <Sparkles className="w-4 h-4 text-sky-500" />
           All Opportunities
@@ -251,11 +250,10 @@ export default function Jobs() {
 
         <button
           onClick={() => setOpportunityTypeFilter('job')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            opportunityTypeFilter === 'job'
-              ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${opportunityTypeFilter === 'job'
+            ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
         >
           <Briefcase className="w-4 h-4" />
           Full-Time Jobs
@@ -263,11 +261,10 @@ export default function Jobs() {
 
         <button
           onClick={() => setOpportunityTypeFilter('internship')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            opportunityTypeFilter === 'internship'
-              ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${opportunityTypeFilter === 'internship'
+            ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-xs'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
         >
           <GraduationCap className="w-4 h-4" />
           Internships
@@ -300,11 +297,10 @@ export default function Jobs() {
             <button
               key={type.id}
               onClick={() => setWorkTypeFilter(type.id)}
-              className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                workTypeFilter === type.id
-                  ? 'bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+              className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${workTypeFilter === type.id
+                ? 'bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
             >
               {type.label}
             </button>
@@ -326,8 +322,8 @@ export default function Jobs() {
             const isInternship = job.opportunity_type === 'internship';
 
             return (
-              <Card 
-                key={oppId} 
+              <Card
+                key={oppId}
                 hover
                 className="p-6 group flex flex-col sm:flex-row gap-5 items-start sm:items-center hover:border-sky-300 dark:hover:border-sky-700"
               >
@@ -351,7 +347,7 @@ export default function Jobs() {
                       {isInternship ? 'Internship' : 'Full-Time Job'}
                     </span>
 
-                    <h3 
+                    <h3
                       onClick={() => setSelectedJobModal(job)}
                       className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors truncate cursor-pointer hover:underline"
                     >
@@ -402,10 +398,10 @@ export default function Jobs() {
 
                 {/* Actions: Guaranteed Working Link */}
                 <div className="flex sm:flex-col items-center gap-2 w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                  <a 
-                    href={job.url || (isInternship ? "https://internshala.com/internships" : "https://www.linkedin.com/jobs/search/?location=India")} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
+                  <a
+                    href={job.url || (isInternship ? "https://internshala.com/internships" : "https://www.linkedin.com/jobs/search/?location=India")}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-bold text-xs sm:text-sm shadow-xs transition-colors active:scale-95"
                   >
                     Apply Now <ExternalLink className="w-3.5 h-3.5" />
@@ -414,11 +410,10 @@ export default function Jobs() {
                   <button
                     type="button"
                     onClick={() => toggleSaveJob(oppId, job.title)}
-                    className={`p-2.5 rounded-xl border transition-colors ${
-                      isSaved 
-                        ? 'bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400' 
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                    }`}
+                    className={`p-2.5 rounded-xl border transition-colors ${isSaved
+                      ? 'bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                      }`}
                     title={isSaved ? "Saved to target opportunities" : "Save this opportunity"}
                     aria-label="Bookmark opportunity"
                   >

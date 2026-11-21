@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ThemeToggle from './ui/ThemeToggle';
 import {
   TrendingUp,
@@ -21,7 +21,6 @@ export default function Navbar() {
   const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem('token');

@@ -238,8 +238,8 @@ export default function Signup() {
                       <div
                         key={step}
                         className={`h-full rounded-full transition-colors duration-200 ${passwordScore >= step
-                            ? strengthLabel.color
-                            : 'bg-slate-200 dark:bg-slate-800'
+                          ? strengthLabel.color
+                          : 'bg-slate-200 dark:bg-slate-800'
                           }`}
                       />
                     ))}

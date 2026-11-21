@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { api, updateSkills, getInterviewAnalytics, getInterviewHistory } from '../services/api';
+import { api, updateSkills, getInterviewAnalytics, getInterviewHistory, getResumesList } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -21,7 +21,6 @@ import {
   Target, 
   CheckCheck,
   GripVertical,
-  RefreshCw,
   Award,
   Play,
   UserRoundCheck,
@@ -35,7 +34,7 @@ export default function Dashboard() {
   const [skills, setSkills] = useState([]);
   const [customSkill, setCustomSkill] = useState('');
   const [isDraggingFile, setIsDraggingFile] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState('Senior_Software_Engineer_Resume.pdf');
+  const [uploadedFileName, setUploadedFileName] = useState('');
   
   // Drag-and-drop skills reordering state
   const [draggedSkillIndex, setDraggedSkillIndex] = useState(null);
@@ -65,19 +64,30 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    const loadInterviewData = async () => {
+    const loadDashboardData = async () => {
       try {
-        const [analytics, history] = await Promise.all([
+        const [analytics, history, resumesData] = await Promise.allSettled([
           getInterviewAnalytics(),
-          getInterviewHistory()
+          getInterviewHistory(),
+          getResumesList()
         ]);
-        setInterviewAnalytics(analytics);
-        setRecentInterviews((history.history || []).slice(0, 4));
+        if (analytics.status === 'fulfilled') {
+          setInterviewAnalytics(analytics.value);
+        }
+        if (history.status === 'fulfilled') {
+          setRecentInterviews((history.value.history || []).slice(0, 4));
+        }
+        if (resumesData.status === 'fulfilled' && resumesData.value?.resumes?.length > 0) {
+          const primary = resumesData.value.resumes.find(r => r.is_primary) || resumesData.value.resumes[0];
+          if (primary?.filename) {
+            setUploadedFileName(primary.filename);
+          }
+        }
       } catch (err) {
-        console.warn('Could not load interview analytics:', err);
+        console.warn('Could not load dashboard data:', err);
       }
     };
-    loadInterviewData();
+    loadDashboardData();
   }, []);
 
   const handleFileUpload = async (file) => {
@@ -148,19 +158,6 @@ export default function Dashboard() {
     toast.info(`Removed "${skillToRemove}".`, 'Skill Removed');
     try {
       await updateSkills(newSkills);
-    } catch (err) {
-      console.warn('Could not sync skills to server:', err);
-    }
-  };
-
-  const handleLoadSample = async () => {
-    const sampleSkills = ['Python', 'FastAPI', 'React', 'Docker', 'Machine Learning', 'PostgreSQL', 'TypeScript'];
-    setSkills(sampleSkills);
-    setUser(prev => ({ ...prev, extracted_skills: sampleSkills.join(',') }));
-    setUploadedFileName('Sample_FullStack_Engineer.pdf');
-    toast.success('Loaded sample engineering candidate profile with 7 skills!', 'Sample Profile Loaded');
-    try {
-      await updateSkills(sampleSkills);
     } catch (err) {
       console.warn('Could not sync skills to server:', err);
     }
@@ -242,15 +239,6 @@ export default function Dashboard() {
               className="bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-sm"
             >
               Start Practice Interview
-            </Button>
-            <Button
-              onClick={handleLoadSample}
-              variant="outline"
-              size="md"
-              icon={RefreshCw}
-              className="text-white border-white/20 hover:bg-white/10"
-            >
-              Load Sample Data
             </Button>
           </div>
         </div>

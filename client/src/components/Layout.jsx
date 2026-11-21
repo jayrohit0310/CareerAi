@@ -21,14 +21,10 @@ import {
   Sparkles,
   Bell,
   ChevronDown,
-  FileText,
   CheckCircle2,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
-  BookOpen,
-  Award,
-  Layers
+  Search
 } from 'lucide-react';
 
 export default function Layout() {

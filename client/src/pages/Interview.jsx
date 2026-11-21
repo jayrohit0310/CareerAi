@@ -20,23 +20,16 @@ import Modal from '../components/ui/Modal';
 import ProgressRing from '../components/ui/ProgressRing';
 import ProgressBar, { SegmentedProgressBar } from '../components/ui/ProgressBar';
 import { 
-  UserRoundCheck, 
   Send, 
-  MessageCircleQuestion, 
-  Trophy, 
   RotateCcw, 
   Clock, 
   Mic, 
   MicOff, 
-  ChevronDown, 
-  ChevronUp, 
   Sparkles, 
   Loader2, 
-  Square, 
   AlertCircle,
   Volume2,
   VolumeX,
-  Award,
   CheckCircle2,
   FileText,
   UploadCloud,
@@ -50,15 +43,9 @@ import {
   Edit3,
   Check,
   X,
-  AlertTriangle,
   Search,
-  Filter,
   Bookmark,
-  Star,
-  CheckSquare,
-  BarChart3,
-  Lightbulb,
-  Share2
+  Star
 } from 'lucide-react';
 
 // Curated Question Bank dataset for the Question Bank tab
@@ -165,7 +152,6 @@ export default function Interview() {
 
   // Options loaded from backend
   const [options, setOptions] = useState(null);
-  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
   // Configuration state
   const [config, setConfig] = useState({
@@ -185,7 +171,6 @@ export default function Interview() {
   const [answer, setAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastFeedback, setLastFeedback] = useState(null);
-  const [interviewHistory, setInterviewHistory] = useState([]);
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
 
   // Audio Recording state
@@ -229,7 +214,6 @@ export default function Interview() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        setIsLoadingOptions(true);
         const data = await getInterviewOptions();
         setOptions(data);
         if (data.available_resumes && data.available_resumes.length > 0) {
@@ -238,8 +222,6 @@ export default function Interview() {
         }
       } catch (err) {
         console.warn('Could not load interview options from server:', err);
-      } finally {
-        setIsLoadingOptions(false);
       }
     };
     fetchOptions();
@@ -277,6 +259,21 @@ export default function Interview() {
     };
   }, []);
 
+  // Load report
+  const loadReportAndFinish = useCallback(async (sId) => {
+    setSessionStage('report');
+    setIsLoadingReport(true);
+    try {
+      const rep = await getInterviewReport(sId);
+      setReportData(rep);
+    } catch (err) {
+      console.error('Failed to load performance report:', err);
+      toast.error('Failed to load full report. Showing session summary.', 'Report Error');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  }, [toast]);
+
   // Auto-expire session handler
   const handleAutoExpire = useCallback(async () => {
     if (sessionStage !== 'interviewing' || !sessionId) return;
@@ -295,7 +292,7 @@ export default function Interview() {
     } catch {
       loadReportAndFinish(sessionId);
     }
-  }, [sessionStage, sessionId, toast]);
+  }, [sessionStage, sessionId, toast, loadReportAndFinish]);
 
   useEffect(() => {
     handleAutoExpireRef.current = handleAutoExpire;
@@ -400,21 +397,6 @@ export default function Interview() {
       toast.error('Failed to register answer. Please retry.', 'Submission Error');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Load report
-  const loadReportAndFinish = async (sId) => {
-    setSessionStage('report');
-    setIsLoadingReport(true);
-    try {
-      const rep = await getInterviewReport(sId);
-      setReportData(rep);
-    } catch (err) {
-      console.error('Failed to load performance report:', err);
-      toast.error('Failed to load full report. Showing session summary.', 'Report Error');
-    } finally {
-      setIsLoadingReport(false);
     }
   };
 
